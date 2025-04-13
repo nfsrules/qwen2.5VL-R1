@@ -1,4 +1,4 @@
-name: base
+name: qwen2.5VL-R1
 channels:
   - defaults
   - conda-forge
