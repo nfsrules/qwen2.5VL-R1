@@ -1,0 +1,14 @@
+bitsandbytes==0.45.5
+deepspeed==0.16.5
+imageio==2.37.0
+liger_kernel==0.5.8
+openai==1.73.0
+peft==0.15.1
+Pillow==11.2.1
+pygame==2.6.1
+qwen_vl_utils==0.0.10
+safetensors==0.5.3
+torch==2.6.0
+tqdm==4.67.1
+transformers==4.51.2
+ujson==5.10.0
