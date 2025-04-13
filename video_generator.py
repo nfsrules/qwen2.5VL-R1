@@ -25,10 +25,11 @@ class SyntheticDatasetLoader:
             Original Question: {original_question}
             Original Answer: {original_answer}
 
-        Output Format:
-            Answer: [answer with reasoning steps, including calculations where applicable]
-                    <think>step-by-step reasoning process</think>
-                    <answer>easy to verify answer</answer>
+        Strict Output Format:
+            <think>Your generated CoT reasoning process</think>
+            <answer>easy to verify answer (same format than the Original Answer)</answer>
+
+        Important: **Do not include the Original Answer** in the thinking process, only in the final part. 
     """
 
     def __init__(self, output_dir="dataset", frame_size=64, video_length=30):
@@ -172,9 +173,12 @@ class SyntheticDatasetLoader:
         pygame.quit()
 
     def _create_motion_composite(
-        self, video_path, sample_indices=[0, 20, 40, 59]
+        self, video_path
     ):
         reader = imageio.get_reader(video_path)
+        num_frames = reader.count_frames()
+        sample_indices = [int(i * (num_frames - 1) / 3) for i in range(4)]
+
         frames = [
             Image.fromarray(reader.get_data(i)).convert("RGBA")
             for i in sample_indices
@@ -214,7 +218,7 @@ class SyntheticDatasetLoader:
         for attempt in range(max_retries):
             try:
                 response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4o",
                     messages=messages,
                     temperature=0.2,
                     max_tokens=2048,
