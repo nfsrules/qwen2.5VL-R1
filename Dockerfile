@@ -24,7 +24,7 @@ SHELL ["conda", "run", "-n", "base", "/bin/bash", "-c"]
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=utf-8 \
-    PYTHONPATH=/workspace/src:$PYTHONPATH \
+    PYTHONPATH="/workspace/src:$PYTHONPATH"  \
     TOKENIZERS_PARALLELISM=false
 
 # Optional test or default command
