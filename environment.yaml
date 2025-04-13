@@ -146,6 +146,7 @@ dependencies:
   - zstandard=0.23.0=py311hbc35293_1
   - zstd=1.5.6=ha6fb4c9_0
   - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu124
       - accelerate==1.6.0
       - annotated-types==0.7.0
       - anyio==4.9.0
