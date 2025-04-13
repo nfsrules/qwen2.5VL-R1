@@ -9,7 +9,9 @@ Pillow==11.2.1
 pygame==2.6.1
 qwen_vl_utils==0.0.10
 safetensors==0.5.3
-torch==2.5.1
+torch==2.5.1+cu124
+torchvision==0.18.1+cu124
+torchaudio==2.2.1
 tqdm==4.66.4
 transformers==4.50.1
 ujson==5.10.0
