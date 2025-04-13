@@ -105,7 +105,7 @@ def main():
     parser.add_argument("--lora_dropout", type=float, default=0.05)
 
     args = parser.parse_args()
-    run_lora_training(args)
+    run_lora_finetune(args)
 
 
 if __name__ == "__main__":
