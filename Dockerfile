@@ -18,14 +18,15 @@ RUN apt-get update && apt-get install -y \
 # Create Conda env from exported config
 RUN conda env create -f environment.yaml
 
-# Set default shell to use the environment
-SHELL ["conda", "run", "-n", "base", "/bin/bash", "-c"]
+# Use the created environment by default
+ENV PATH="/opt/conda/envs/qwen2.5VL-R1/bin:$PATH"
+ENV CONDA_DEFAULT_ENV=qwen2.5VL-R1
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING=utf-8 \
-    PYTHONPATH="/workspace/src:$PYTHONPATH"  \
+    PYTHONPATH="/workspace/src:$PYTHONPATH" \
     TOKENIZERS_PARALLELISM=false
 
-# Optional test or default command
+# Default command (optional)
 CMD ["python", "video_generator.py", "--help"]
