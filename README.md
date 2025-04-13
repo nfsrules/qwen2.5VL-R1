@@ -1,4 +1,3 @@
-```markdown
 # Qwen2.5VL-R1
 
 🚀 **Qwen2.5VL-R1** is an optimized variant of [Qwen2.5-VL](https://github.com/QwenLM/Qwen-VL) tailored for **video classification with reasoning** using Chain-of-Thought (CoT) prompting and visual grounding.
@@ -27,12 +26,13 @@ qwen2.5VL-R1/
 ├── requirements.txt
 ├── video_generator.py
 ├── scripts/
-│   ├── finetune_video_lora.sh
+│   ├── run_training.py
 │   ├── demo.py
 │   └── zero2_offload.json
 └── src/
     └── training/
         ├── train.py
+        ├── train_grpo.py
         ├── data.py
         ├── trainer.py
         ├── params.py
@@ -77,11 +77,31 @@ python video_generator.py \
 
 ## 🧪 Fine-tuning (LoRA)
 
+Run the unified training CLI with the following options:
+
+### ▶️ Regular LoRA fine-tuning
+
 ```bash
-bash scripts/finetune_video_lora.sh
+python scripts/run_training.py \
+  --use_grpo False \
+  --model_id Qwen/Qwen2.5-VL-3B-Instruct \
+  --data_path ./data/synthetic_videos/train.json \
+  --image_folder ./data/synthetic_videos/videos \
+  --output_dir ./output/video_lora
 ```
 
-Adjust model/data paths inside the script if needed.
+### ▶️ GRPO fine-tuning
+
+```bash
+python scripts/run_training.py \
+  --use_grpo True \
+  --model_id Qwen/Qwen2.5-VL-3B-Instruct \
+  --data_path ./data/synthetic_videos/train.json \
+  --image_folder ./data/synthetic_videos/videos \
+  --output_dir ./output/grpo_video_lora
+```
+
+You can tweak additional args like `--batch_size`, `--lr`, `--lora_rank`, `--fps`, and `--video_max_pixels`.
 
 ---
 
@@ -113,4 +133,3 @@ python scripts/demo.py \
 ## 🛡 License
 
 MIT (or inherit from base model — update as appropriate)
-```

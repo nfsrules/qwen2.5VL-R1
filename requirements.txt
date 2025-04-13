@@ -11,4 +11,5 @@ safetensors==0.5.3
 torch==2.6.0
 tqdm==4.67.1
 transformers==4.51.2
+trl==0.16.1
 ujson==5.10.0
