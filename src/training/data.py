@@ -325,6 +325,7 @@ class SupervisedDataset(Dataset):
             second_gird = all_second_gird
             data_dict["second_per_grid_ts"] = second_gird
 
+        data_dict["conversations"] = self.list_data_dict[i]["conversations"]
         return data_dict
 
 
