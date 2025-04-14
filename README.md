@@ -82,8 +82,7 @@ Run the unified training CLI with the following options:
 ### ▶️ Regular LoRA fine-tuning
 
 ```bash
-python scripts/run_training.py \
-  --use_grpo False \
+python scripts/run_finetuning.py \
   --model_id Qwen/Qwen2.5-VL-3B-Instruct \
   --data_path ./data/synthetic_videos/train.json \
   --image_folder ./data/synthetic_videos/videos \

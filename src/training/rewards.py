@@ -5,23 +5,19 @@ def extract_answer(text):
     match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
     return match.group(1).strip() if match else None
 
-def reward_correct_answer(samples=None, prompts=None, completions=None, **kwargs):
-    if samples is None:
-        raise ValueError("reward_correct_answer() expects 'samples' as input.")
-
+def reward_correct_answer(prompts=None, completions=None, **kwargs):
+    """
+    Compares extracted <answer>...</answer> from completions vs ground truth in prompts[-1]['content']
+    """
     rewards = []
-    for sample in samples:
-        # Reconstruct full output from conversations
-        conversation = " ".join(turn["value"] for turn in sample["conversations"])
-        predicted_answer = extract_answer(conversation)
+    for prompt, completion in zip(prompts, completions):
+        # Get the expected answer from the last assistant turn (assumes it's structured)
+        expected = extract_answer(prompt[-1]["content"])  # Last assistant response in prompt
+        predicted = extract_answer(completion[0]["content"])  # Model's generated output
 
-        # Ground truth is the final assistant turn
-        ground_truth = sample["conversations"][-1]["value"]
-        expected_answer = extract_answer(ground_truth)
-
-        if predicted_answer is None or expected_answer is None:
+        if predicted is None or expected is None:
             rewards.append(0.0)
-        elif predicted_answer == expected_answer:
+        elif predicted == expected:
             rewards.append(1.0)
         else:
             rewards.append(-1.0)
