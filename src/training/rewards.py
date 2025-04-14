@@ -5,10 +5,13 @@ def extract_answer(text):
     match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
     return match.group(1).strip() if match else None
 
-def reward_correct_answer(samples, **kwargs):
+def reward_correct_answer(samples=None, prompts=None, completions=None, **kwargs):
+    if samples is None:
+        raise ValueError("reward_correct_answer() expects 'samples' as input.")
+
     rewards = []
     for sample in samples:
-        # Reconstruct the full output (model's generation)
+        # Reconstruct full output from conversations
         conversation = " ".join(turn["value"] for turn in sample["conversations"])
         predicted_answer = extract_answer(conversation)
 

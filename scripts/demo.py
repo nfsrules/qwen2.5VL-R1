@@ -106,7 +106,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prompt",
         type=str,
-        default="What is happening in this video?",
+        default="In which direction is the ball moving?\nOptions:\n(A) Left to Right\n(B) Right to Left\n(C) Falling Down\n(D) Ascending",
         help="Prompt to ask about the video.",
     )
     parser.add_argument(

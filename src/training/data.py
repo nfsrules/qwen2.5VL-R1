@@ -326,6 +326,12 @@ class SupervisedDataset(Dataset):
             data_dict["second_per_grid_ts"] = second_gird
 
         data_dict["conversations"] = self.list_data_dict[i]["conversations"]
+        convs = self.list_data_dict[i]["conversations"]
+        prompt = ""
+        for turn in convs:
+            role = "User" if turn["from"] == "human" else "Assistant"
+            prompt += f"{role}: {turn['value']}\n"
+        data_dict["prompt"] = prompt.strip()
         return data_dict
 
 

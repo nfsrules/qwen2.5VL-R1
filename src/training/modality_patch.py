@@ -446,6 +446,8 @@ def qwen2_5_mixed_modality_forward_with_flce(
     rope_deltas: Optional[torch.LongTensor] = None,
     cache_position: Optional[torch.LongTensor] = None,
     second_per_grid_ts: Optional[torch.Tensor] = None,
+    **kwargs,
+
 ) -> Union[Tuple, Qwen2_5_VLCausalLMOutputWithPast]:
 
     output_attentions = (
@@ -604,6 +606,15 @@ def qwen2_5_mixed_modality_forward_with_flce(
         loss = lce(self.lm_head.weight, shift_hidden_states, shift_labels)
     else:
         logits = self.lm_head(hidden_states)
+
+        ##### PATCH logits_to_keep #####
+        if not self.training:
+          logits_to_keep = kwargs.get("logits_to_keep", None)
+          if logits_to_keep is not None:
+              logits = logits[..., :logits_to_keep]
+        #######
+
+        
         if labels is not None:
             # Upcast to float if we need to compute the loss to avoid potential precision issues
             logits = logits.float()

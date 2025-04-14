@@ -12,8 +12,6 @@ from peft import LoraConfig, get_peft_model
 from training.params import DataArguments, ModelArguments, TrainingArguments
 from training.data import make_supervised_data_module
 from rewards import reward_correct_answer
-from training.trainer import find_target_linear_names
-from training.train_utils import set_requires_grad
 from liger_kernel.transformers import (
     apply_liger_kernel_to_qwen2_vl,
     apply_liger_kernel_to_qwen2_5_vl,
@@ -22,6 +20,32 @@ from modality_patch import (
     replace_qwen2_5_with_mixed_modality_forward,
     replace_qwen_2_with_mixed_modality_forward,
 )
+
+def find_target_linear_names(
+    model, num_lora_modules=-1, lora_namespan_exclude=[], verbose=True
+):
+    import torch
+    linear_cls = torch.nn.modules.Linear
+    embedding_cls = torch.nn.modules.Embedding
+    lora_module_names = []
+
+    for name, module in model.named_modules():
+        if any(ex_keyword in name for ex_keyword in lora_namespan_exclude):
+            continue
+        if isinstance(module, (linear_cls, embedding_cls)):
+            lora_module_names.append(name)
+
+    if num_lora_modules > 0:
+        lora_module_names = lora_module_names[-num_lora_modules:]
+
+    if verbose:
+        print(f"Found {len(lora_module_names)} lora modules: {lora_module_names}")
+
+    return lora_module_names
+
+def set_requires_grad(parameters, requires_grad):
+    for p in parameters:
+        p.requires_grad = requires_grad
 
 def train():
     parser = HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
@@ -124,8 +148,7 @@ def train():
         args=grpo_args,
         train_dataset=data_module["train_dataset"],
         eval_dataset=data_module.get("eval_dataset"),
-        tokenizer=processor.tokenizer,
-        data_collator=data_module["data_collator"],
+        processing_class=processor.tokenizer,
         reward_funcs=reward_correct_answer,
     )
 

@@ -14,16 +14,16 @@ MODEL_NAME="Qwen/Qwen2.5-VL-3B-Instruct"
 export PYTHONPATH=src:$PYTHONPATH
 
 # Training params
-GLOBAL_BATCH_SIZE=5
-BATCH_PER_DEVICE=1
+GLOBAL_BATCH_SIZE=8
+BATCH_PER_DEVICE=8
 NUM_DEVICES=1
 GRAD_ACCUM_STEPS=$((GLOBAL_BATCH_SIZE / (BATCH_PER_DEVICE * NUM_DEVICES)))
 
 # Run GRPO trainer
 python src/training/train_grpo.py \
     --model_id $MODEL_NAME \
-    --data_path /content/Qwen2-VL-Finetune/synthetic_videos/metadata.json \
-    --image_folder /content/Qwen2-VL-Finetune/synthetic_videos/videos \
+    --data_path /content/qwen2.5VL-R1/data/synthetic_videos/train.json  \
+    --image_folder /content/qwen2.5VL-R1/data/synthetic_videos/videos  \
     --output_dir output/grpo_video_lora \
     --per_device_train_batch_size $BATCH_PER_DEVICE \
     --gradient_accumulation_steps $GRAD_ACCUM_STEPS \

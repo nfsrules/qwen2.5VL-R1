@@ -14,8 +14,8 @@ deepspeed src/training/train.py \
     --use_liger True \
     --deepspeed scripts/zero2_offload.json \
     --model_id $MODEL_NAME \
-    --data_path /content/Qwen2-VL-Finetune/synthetic_videos/metadata.json \
-    --image_folder /content/Qwen2-VL-Finetune/synthetic_videos/videos \
+    --data_path /content/qwen2.5VL-R1/data/synthetic_videos/train.json \
+    --image_folder /content/qwen2.5VL-R1/data/synthetic_videos/videos \
     --remove_unused_columns False \
     --freeze_vision_tower True \
     --freeze_llm True \
