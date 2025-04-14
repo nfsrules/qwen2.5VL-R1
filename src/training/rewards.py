@@ -7,13 +7,12 @@ def extract_answer(text):
 
 def reward_correct_answer(prompts=None, completions=None, **kwargs):
     """
-    Compares extracted <answer>...</answer> from completions vs ground truth in prompts[-1]['content']
+    Compares extracted <answer>...</answer> from completions vs ground truth in prompts
     """
     rewards = []
     for prompt, completion in zip(prompts, completions):
-        # Get the expected answer from the last assistant turn (assumes it's structured)
-        expected = extract_answer(prompt[-1]["content"])  # Last assistant response in prompt
-        predicted = extract_answer(completion[0]["content"])  # Model's generated output
+        expected = extract_answer(prompt)
+        predicted = extract_answer(completion)
 
         if predicted is None or expected is None:
             rewards.append(0.0)
@@ -22,3 +21,4 @@ def reward_correct_answer(prompts=None, completions=None, **kwargs):
         else:
             rewards.append(-1.0)
     return rewards
+
