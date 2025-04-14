@@ -480,7 +480,8 @@ def qwen2_5_mixed_modality_forward_with_flce(
             # Operates as maksed_scatter for the image tokens
             # However the values are all zeros so it dosen't affect the embeddings.
             # This could avoid deepspeed error when some batch only has texts.
-            inputs_embeds += image_embeds.mean() * 0
+            #inputs_embeds += image_embeds.mean() * 0
+            inputs_embeds = inputs_embeds + image_embeds.mean() * 0
 
         if pixel_values is not None:
             pixel_values = pixel_values.type(self.visual.dtype)
@@ -608,10 +609,10 @@ def qwen2_5_mixed_modality_forward_with_flce(
         logits = self.lm_head(hidden_states)
 
         ##### PATCH logits_to_keep #####
-        if not self.training:
-          logits_to_keep = kwargs.get("logits_to_keep", None)
-          if logits_to_keep is not None:
-              logits = logits[..., :logits_to_keep]
+        #if not self.training:
+        #  logits_to_keep = kwargs.get("logits_to_keep", None)
+        #  if logits_to_keep is not None:
+        #      logits = logits[..., :logits_to_keep]
         #######
 
         
@@ -663,6 +664,8 @@ def qwen2_5_mixed_modality_forward(
     rope_deltas: Optional[torch.LongTensor] = None,
     cache_position: Optional[torch.LongTensor] = None,
     second_per_grid_ts: Optional[torch.Tensor] = None,
+    **kwargs,
+
 ) -> Union[Tuple, Qwen2_5_VLCausalLMOutputWithPast]:
 
     output_attentions = (
@@ -804,6 +807,13 @@ def qwen2_5_mixed_modality_forward(
 
     hidden_states = outputs[0]
     logits = self.lm_head(hidden_states)
+
+    ##### PATCH logits_to_keep #####
+    #if not self.training:
+    #  logits_to_keep = kwargs.get("logits_to_keep", None)
+    #  if logits_to_keep is not None:
+    #      logits = logits[..., :logits_to_keep]
+    #######
 
     loss = None
     if labels is not None:
