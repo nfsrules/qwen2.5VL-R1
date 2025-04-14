@@ -325,13 +325,24 @@ class SupervisedDataset(Dataset):
             second_gird = all_second_gird
             data_dict["second_per_grid_ts"] = second_gird
 
-        data_dict["conversations"] = self.list_data_dict[i]["conversations"]
+        # Convert conversations to OpenAI-like format
         convs = self.list_data_dict[i]["conversations"]
-        prompt = ""
+        chat = []
         for turn in convs:
-            role = "User" if turn["from"] == "human" else "Assistant"
-            prompt += f"{role}: {turn['value']}\n"
-        data_dict["prompt"] = prompt.strip()
+            role = "user" if turn["from"] == "human" else "assistant"
+            chat.append({"role": role, "content": turn["value"]})
+
+        # Extract prompt (user/system turns only)
+        prompt = [m for m in chat if m["role"] != "assistant"]
+
+        # Extract target (final assistant response)
+        answer_turns = [m for m in chat if m["role"] == "assistant"]
+        answer = answer_turns[-1]["content"] if answer_turns else ""
+
+        # Save for GRPO
+        data_dict["prompt"] = prompt
+        data_dict["answer"] = answer
+
         return data_dict
 
 
