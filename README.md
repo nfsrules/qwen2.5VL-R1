@@ -76,7 +76,7 @@ python video_generator.py \
 - Output: Saves videos in `data/synthetic_videos/videos/` and metadata in `train.json` and `val.json`.  
 - Note: If you do not have an OpenAI api key you can directly **[Download the CoT dataset](https://drive.google.com/drive/folders/1t_vJBkh1sPne_Qd-xirkPEFkZLwoq3Fc?usp=drive_link)**
 
-
+- Video example: 
 ![Example](assets/ball-animation.gif)
 
 ---
