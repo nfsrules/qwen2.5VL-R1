@@ -199,8 +199,8 @@ python scripts/demo.py \
 
 - GRPO approach inspired by:  
   - [Gemma3 (1B) - GRPO Notebook](https://colab.research.google.com/github/unslothai/notebooks/blob/main/nb/Gemma3_(1B)-GRPO.ipynb)  
-  - [lll6gg/UI-R1](https://github.com/lll6gg/UI-R1/tree/main) *(note: These examples do **not** support video input)*
-
+  - [lll6gg/UI-R1](https://github.com/lll6gg/UI-R1/tree/main) 
+  > 📌 Caveat: Do not support **videos**
 
 ---
 
