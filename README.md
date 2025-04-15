@@ -53,8 +53,8 @@ pip install -r requirements.txt
 
 Generate synthetic videos of a moving ball with corresponding labels and optional support for:
 
--  CoT (Chain-of-Thought) thinking generation for reasoning models 
 -  Video ugmentations (blur and crop) with default probability of 0.2
+-  CoT (Chain-of-Thought) thinking generation for reasoning models (Optional, the code will work in simple mode)
 
 
 ```bash
@@ -109,7 +109,7 @@ deepspeed src/training/train.py \
     --lora_dropout 0.05 \
     --num_lora_modules -1 \
     --lora_namespan_exclude "['lm_head','embed_tokens']" \
-    --disable_flash_attn2 False \
+    --disable_flash_attn2 True \
     --output_dir output/video_lora \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
