@@ -10,6 +10,7 @@ import base64
 import time
 from openai import OpenAI
 from tqdm import tqdm
+import numpy as np
 
 from src.training.augmentations import rand_augment_transform 
 
