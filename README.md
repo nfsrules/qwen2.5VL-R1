@@ -150,6 +150,7 @@ python src/training/train_grpo.py \
     --gradient_accumulation_steps 1 \
     --num_train_epochs 1 \
     --learning_rate 2e-4 \
+    --disable_flash_attn2 True \
     --bf16 True \
     --fp16 False \
     --freeze_llm True \
