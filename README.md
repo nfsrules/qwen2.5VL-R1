@@ -131,6 +131,8 @@ deepspeed src/training/train.py \
     --dataloader_num_workers 2
 ```
 
+- Metrics: Training loss and accuracy are logged every step to Wandb.  
+
 ### GRPO Post-training (RL for reasoning)
 
 We also provide a GRPO (Group Relative Policy Optimization) training script with rewards for derivating a reasoning version of the model.
@@ -167,7 +169,7 @@ python src/training/train_grpo.py \
 ```
 
 - Output: Checkpoints are saved in `./output/video_lora/` or `./output/grpo_video_lora/`.  
-- Metrics: Training loss and accuracy are logged every step to TensorBoard.  
+- Metrics: Training loss and accuracy are logged every step to Wandb.  
 - Optimization: Uses bf16 precision, gradient checkpointing, and DeepSpeed ZeRO-2 for memory optimization.
 
 ---
