@@ -212,11 +212,8 @@ python scripts/demo.py \
 ```
 qwen2.5VL-R1/
 ├── README.md
-├── Dockerfile
-├── environment.yaml
 ├── requirements.txt
 ├── video_generator.py
-├── .dockerignore
 ├── data/
 │   └── synthetic_videos/
 │       ├── train.json
@@ -224,7 +221,6 @@ qwen2.5VL-R1/
 │       └── videos/
 ├── scripts/
 │   ├── demo.py
-│   ├── run_finetuning.py
 │   └── zero2_offload.json
 └── src/
     └── training/
