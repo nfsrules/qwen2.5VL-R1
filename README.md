@@ -81,30 +81,25 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-**Optional: Conda**
-
-```bash
-conda env create -f environment.yaml
-conda activate qwen2.5VL-R1
-```
-
-**Optional: Docker**
-
-```bash
-docker build -t qwen2.5vl-r1 .
-docker run -it --gpus all qwen2.5vl-r1 bash
-```
-
 ---
 
 ## 📼 Generate Synthetic Dataset
 
-Generate synthetic videos of a moving ball with corresponding labels and optional CoT (Chain-of-Thought) annotations:
+Generate synthetic videos of a moving ball with corresponding labels and optional:
+
+-  CoT (Chain-of-Thought) generation for reasoning models 
+-  Two video augmentations supported (blur and crop)
+
 
 ```bash
+
+# Optional: Enable Chain-of-Thought generation
+export OPENAI_API_KEY=your-openai-api-key
+
 python video_generator.py \
   --output_dir ./data/synthetic_videos \
   --num_samples 20 \
+  --cot \
   --frame_size 64 \
   --video_length 30 \
   --split 0.8 \
@@ -113,8 +108,7 @@ python video_generator.py \
 ```
 
 - Output: Saves videos in `data/synthetic_videos/videos/` and metadata in `train.json` and `val.json`.  
-- Note: CoT generation (`--cot`) requires an `OPENAI_API_KEY` environment variable but is disabled by default.  
-- Augmentations: Applies blur and crop to 20% of videos for robustness.
+- Note: If you do not haven and OpenAI api key you can directly **[Download the CoT dataset](https://drive.google.com/drive/folders/1t_vJBkh1sPne_Qd-xirkPEFkZLwoq3Fc?usp=drive_link)**
 
 ---
 
@@ -185,3 +179,18 @@ python scripts/demo.py \
 ```
 
 - Output: Prints the model’s prediction, including reasoning steps (if trained with CoT) and the final answer.
+
+
+**Optional: Conda**
+
+```bash
+conda env create -f environment.yaml
+conda activate qwen2.5VL-R1
+```
+
+**Optional: Docker**
+
+```bash
+docker build -t qwen2.5vl-r1 .
+docker run -it --gpus all qwen2.5vl-r1 bash
+```
