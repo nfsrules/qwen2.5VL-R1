@@ -8,11 +8,11 @@ from PIL import Image
 from io import BytesIO
 import base64
 import time
+import numpy as np
+import cv2
 from openai import OpenAI
 from tqdm import tqdm
-import numpy as np
 
-from src.training.augmentations import rand_augment_transform, safe_augment_ops
 
 class SyntheticDatasetLoader:
     PROMPT_FORMAT = """
@@ -32,19 +32,14 @@ class SyntheticDatasetLoader:
         Important: **Do not include the Original Answer** in the thinking process, only in the final part to avoid leaking the answer.
     """
 
-    def __init__(self, output_dir="dataset", frame_size=64, video_length=30, augment_prob=0.1):
+    def __init__(self, output_dir="dataset", frame_size=64, video_length=30, augment_prob=0.1, augment_types=None):
         base_path = Path(__file__).parent.resolve()
         self.output_dir = (base_path / output_dir).resolve()
         self.video_dir = self.output_dir / "videos"
         self.meta_file = self.output_dir / "metadata.json"
         self.screen_width = self.screen_height = frame_size
         self.video_length = video_length
-        self.classes = [
-            "left_to_right",
-            "right_to_left",
-            "falling",
-            "ascending",
-        ]
+        self.classes = ["left_to_right", "right_to_left", "falling", "ascending"]
         self.option_labels = {
             "left_to_right": "(A) Left to Right",
             "right_to_left": "(B) Right to Left",
@@ -63,13 +58,11 @@ class SyntheticDatasetLoader:
         self.video_dir.mkdir(parents=True, exist_ok=True)
 
         self.augment_prob = augment_prob
-        safe_ops = safe_augment_ops(magnitude=10)
-        self.randaugment = rand_augment_transform(custom_ops=safe_ops)
-        
+        self.augment_types = augment_types or []
         print(f"Dataset will be saved to: {self.output_dir}")
+        print(f"Augmentations: {self.augment_types if self.augment_prob > 0 else 'None'}")
 
-    def generate_dataset(self, num_samples=10, cot=False, seed=42, split=None):
-
+    def generate_dataset(self, num_samples=10, cot=False, seed=42, split=0.8):
         if cot and not self.client:
             print("OPENAI_API_KEY not found or OpenAI client unavailable. Falling back to non-CoT generation.")
             cot = False
@@ -97,7 +90,7 @@ class SyntheticDatasetLoader:
             answer = self.option_labels[motion_type]
 
             if cot:
-                composite_image = self._create_motion_composite(video_path)
+                composite_image = self._create_motion_composite(video_path)  # <- this is NOT augmented
                 cot_response = self._generate_cot_response(composite_image, question, answer)
                 full_answer = cot_response.strip() if cot_response else f"Answer: {answer}"
             else:
@@ -151,15 +144,41 @@ class SyntheticDatasetLoader:
             screen.fill(black)
             pygame.draw.circle(screen, white, (int(x), int(y)), radius)
             frame = pygame.surfarray.array3d(screen).transpose([1, 0, 2])
-            img = Image.fromarray(frame.astype("uint8"))
-            frames.append(img)
+            frames.append(frame)
 
         if apply_augmentation:
-            frames = self.randaugment(frames)
+            frames = self._opencv_augment(frames)
 
-        frames = [np.array(f) for f in frames]
+        frames = [Image.fromarray(f.astype("uint8")) for f in frames]
         imageio.mimsave(save_path, frames, fps=30)
         pygame.quit()
+
+    def _opencv_augment(self, frames):
+        augmented = []
+        for frame in frames:
+            img = frame.copy()
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+            if "blur" in self.augment_types:
+                ksize = random.choice([3, 5, 7])
+                kernel = np.zeros((ksize, ksize))
+                kernel[ksize // 2] = np.ones(ksize)
+                kernel = kernel / ksize
+                img = cv2.filter2D(img, -1, kernel)
+
+            if "crop" in self.augment_types:
+                h, w = img.shape[:2]
+                crop_frac = random.uniform(0.8, 1.0)
+                new_h, new_w = int(h * crop_frac), int(w * crop_frac)
+                top = random.randint(0, h - new_h)
+                left = random.randint(0, w - new_w)
+                img = img[top:top+new_h, left:left+new_w]
+                img = cv2.resize(img, (w, h), interpolation=cv2.INTER_LINEAR)
+
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            augmented.append(img)
+
+        return augmented
 
     def _create_motion_composite(self, video_path):
         reader = imageio.get_reader(video_path)
@@ -199,7 +218,7 @@ class SyntheticDatasetLoader:
                 )
                 return response.choices[0].message.content
             except Exception as e:
-                print(f"\u26a0\ufe0f Retry {attempt+1}/{max_retries}: {e}")
+                print(f"Retry {attempt+1}/{max_retries}: {e}")
                 time.sleep(2**attempt + random.uniform(0, 1))
 
         print("GPT failed after retries.")
@@ -218,14 +237,18 @@ if __name__ == "__main__":
     parser.add_argument("--frame_size", type=int, default=64, help="Width/height of video frames.")
     parser.add_argument("--video_length", type=int, default=30, help="Number of frames per video.")
     parser.add_argument("--augment_prob", type=float, default=0.1, help="Fraction of videos to augment (0.0 to 1.0). Default: 0.1")
+    parser.add_argument("--augment", type=str, default="", help="Comma-separated list of augmentations: blur,crop")
 
     args = parser.parse_args()
+
+    augment_types = [a.strip() for a in args.augment.split(",") if a.strip()] if args.augment else []
 
     loader = SyntheticDatasetLoader(
         output_dir=args.output_dir,
         frame_size=args.frame_size,
         video_length=args.video_length,
         augment_prob=args.augment_prob,
+        augment_types=augment_types,
     )
 
     loader.generate_dataset(
