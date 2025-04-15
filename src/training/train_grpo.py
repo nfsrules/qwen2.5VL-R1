@@ -13,9 +13,6 @@ from training.params import DataArguments, ModelArguments, TrainingArguments
 from training.data import make_supervised_data_module
 from rewards import (
     check_answer as reward_correct_answer,
-    match_format_exactly,
-    match_format_approximately,
-    check_reasoning_length,
 )
 from liger_kernel.transformers import (
     apply_liger_kernel_to_qwen2_5_vl,
@@ -155,10 +152,7 @@ def train():
         eval_dataset=data_module.get("eval_dataset"),
         processing_class=processor.tokenizer,
         reward_funcs=[
-            reward_correct_answer,
-            match_format_exactly,
-            match_format_approximately,
-            check_reasoning_length,
+            reward_correct_answer
         ],
     )
 

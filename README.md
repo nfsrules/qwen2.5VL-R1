@@ -19,10 +19,11 @@ This project demonstrates fine-tuning a multimodal large language model (MLLM), 
 
 ### Prerequisites
 
-- OS: Ubuntu 20.04 or later  
-- Python: 3.8+  
-- GPU: Single NVIDIA GPU (T4, A100, etc.) with CUDA 11.7+  
-- Dependencies: Listed in `requirements.txt`
+- OS: Ubuntu 20.04
+- Python: 3.11.12 
+- GPU: NVIDIA A100-SXM4-40GB with CUDA 12.4 
+- Dependencies: Listed in `requirements.txt` (install with `pip install -r requirements.txt`)
+
 
 ### Installation
 
@@ -82,48 +83,83 @@ python video_generator.py \
 Once generated the training dataset you can fine-tune `Qwen2.5-VL-3B-Instruct` using LoRA for efficiency.
 The pipeline leverages DeepSpeed ZeRO-2 for GPU memory optimization.
 
-### Regular LoRA Fine-Tuning
+### SFT LoRA Fine-Tuning (Supervised Finetuning)
 
 ```bash
-python scripts/run_finetuning.py \
-  --model_id Qwen/Qwen2.5-VL-3B-Instruct \
-  --data_path ./data/synthetic_videos/train.json \
-  --image_folder ./data/synthetic_videos/videos \
-  --output_dir ./output/video_lora \
-  --num_train_epochs 1 \
-  --batch_size 1 \
-  --global_batch_size 5 \
-  --num_devices 1 \
-  --fps 1.0 \
-  --video_max_pixels 4096 \
-  --lr 2e-4 \
-  --lora_rank 64 \
-  --lora_alpha 64 \
-  --lora_dropout 0.05
+PYTHONPATH=src:$PYTHONPATH \
+deepspeed src/training/train.py \
+    --use_liger True \
+    --deepspeed ./scripts/zero2_offload.json \
+    --model_id Qwen/Qwen2.5-VL-3B-Instruct \
+    --data_path ./data/synthetic_videos/train.json \
+    --image_folder ./data/synthetic_videos/videos \
+    --remove_unused_columns False \
+    --freeze_vision_tower True \
+    --freeze_llm True \
+    --tune_merger False \
+    --bf16 True \
+    --lora_enable True \
+    --vision_lora True \
+    --lora_rank 64 \
+    --lora_alpha 64 \
+    --lora_dropout 0.05 \
+    --num_lora_modules -1 \
+    --lora_namespan_exclude "['lm_head','embed_tokens']" \
+    --disable_flash_attn2 False \
+    --output_dir output/video_lora \
+    --num_train_epochs 1 \
+    --per_device_train_batch_size 1 \
+    --gradient_accumulation_steps 5 \
+    --video_max_pixels 4096 \
+    --fps 1 \
+    --learning_rate 2e-4 \
+    --weight_decay 0.0 \
+    --warmup_ratio 0.03 \
+    --lr_scheduler_type "cosine" \
+    --logging_steps 1 \
+    --tf32 True \
+    --gradient_checkpointing True \
+    --report_to wandb \
+    --lazy_preprocess True \
+    --save_strategy "steps" \
+    --save_steps 5 \
+    --save_total_limit 2 \
+    --dataloader_num_workers 2
 ```
 
-### RL GRPO Post-training (For reasoning version)
+### GRPO Post-training (RL for reasoning)
 
-We also provide a GRPO (Group Relative Policy Optimization) training script with rewards for training reasoning models:
+We also provide a GRPO (Group Relative Policy Optimization) training script with rewards for derivating a reasoning version of the model.
 
 
 ```bash
-python scripts/run_finetuning.py \
-  --use_grpo True \
-  --model_id Qwen/Qwen2.5-VL-3B-Instruct \
-  --data_path ./data/synthetic_videos/train.json \
-  --image_folder ./data/synthetic_videos/videos \
-  --output_dir ./output/grpo_video_lora \
-  --num_train_epochs 1 \
-  --batch_size 1 \
-  --global_batch_size 5 \
-  --num_devices 1 \
-  --fps 1.0 \
-  --video_max_pixels 4096 \
-  --lr 2e-4 \
-  --lora_rank 64 \
-  --lora_alpha 64 \
-  --lora_dropout 0.05
+PYTHONPATH=src:$PYTHONPATH \
+python src/training/train_grpo.py \
+    --model_id Qwen/Qwen2.5-VL-3B-Instruct \
+    --model_ckpt ./output/video_lora/checkpoint-19 \ # Here put your LoRA ckp after SFT!!
+    --data_path ./data/synthetic_videos/train.json \
+    --image_folder ./data/synthetic_videos/videos \
+    --output_dir output/grpo_video_lora \
+    --per_device_train_batch_size 8 \
+    --gradient_accumulation_steps 1 \
+    --num_train_epochs 1 \
+    --learning_rate 2e-4 \
+    --bf16 True \
+    --fp16 False \
+    --freeze_llm True \
+    --freeze_vision_tower True \
+    --tune_merger False \
+    --lora_enable True \
+    --vision_lora True \
+    --lora_rank 64 \
+    --lora_alpha 64 \
+    --lora_dropout 0.05 \
+    --num_lora_modules -1 \
+    --lora_namespan_exclude "['lm_head','embed_tokens']" \
+    --gradient_checkpointing True \
+    --logging_steps 1 \
+    --dataloader_num_workers 2
+
 ```
 
 - Output: Checkpoints are saved in `./output/video_lora/` or `./output/grpo_video_lora/`.  
@@ -148,19 +184,18 @@ python scripts/demo.py \
 - Output: Prints the model’s prediction, including reasoning steps (if trained with CoT) and the final answer.
 
 
-**Optional: Conda**
+### Credits
 
-```bash
-conda env create -f environment.yaml
-conda activate qwen2.5VL-R1
-```
+- Base model documentation: [Transformers - Qwen2.5-VL](https://github.com/huggingface/transformers/blob/main/docs/source/en/model_doc/qwen2_5_vl.md)  
+  > 📌 Caveat: Supports **video inference**, but **not video training**.
 
-**Optional: Docker**
+- Fine-tuning code adapted from:  
+  - [2U1/Qwen2-VL-Finetune](https://github.com/2U1/Qwen2-VL-Finetune)  
+  - [QwenLM/Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL) *(includes only for full FT, not PEFT)*
 
-```bash
-docker build -t qwen2.5vl-r1 .
-docker run -it --gpus all qwen2.5vl-r1 bash
-```
+- GRPO approach inspired by:  
+  - [Gemma3 (1B) - GRPO Notebook](https://colab.research.google.com/github/unslothai/notebooks/blob/main/nb/Gemma3_(1B)-GRPO.ipynb)  
+  - [lll6gg/UI-R1](https://github.com/lll6gg/UI-R1/tree/main) *(note: These examples do **not** support video input)*
 
 
 ---
