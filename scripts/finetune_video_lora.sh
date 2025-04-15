@@ -42,7 +42,7 @@ deepspeed src/training/train.py \
     --logging_steps 1 \
     --tf32 True \
     --gradient_checkpointing True \
-    --report_to tensorboard \
+    --report_to wandb \
     --lazy_preprocess True \
     --save_strategy "steps" \
     --save_steps 5 \
