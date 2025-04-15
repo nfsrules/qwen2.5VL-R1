@@ -90,7 +90,7 @@ class SyntheticDatasetLoader:
             answer = self.option_labels[motion_type]
 
             if cot:
-                composite_image = self._create_motion_composite(video_path)  # <- this is NOT augmented
+                composite_image = self._create_motion_composite(video_path)
                 cot_response = self._generate_cot_response(composite_image, question, answer)
                 full_answer = cot_response.strip() if cot_response else f"Answer: {answer}"
             else:
