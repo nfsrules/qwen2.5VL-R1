@@ -10,7 +10,6 @@ import base64
 import time
 from openai import OpenAI
 from tqdm import tqdm
-from augly.video.transforms import Crop, VideoCompression
 import augly.video as vidaugs
 
 
