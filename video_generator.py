@@ -10,7 +10,7 @@ import base64
 import time
 from openai import OpenAI
 from tqdm import tqdm
-from augly.video.transforms import Crop, GaussianBlur  # Updated to use AugLy
+from augly.video.transforms import Crop, VideoCompression
 import augly.video.functional as vf
 
 
@@ -163,7 +163,7 @@ class SyntheticDatasetLoader:
         if "crop" in self.augment:
             transforms.append(Crop(top=2, left=2, height=60, width=60))
         if "blur" in self.augment:
-            transforms.append(GaussianBlur(radius=1.5))
+            transforms.append(VideoCompression(compression_rate=25))
 
         vf.apply_transforms(video_path=str(video_path), output_path=str(video_path), transforms=transforms)
 
