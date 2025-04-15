@@ -10,8 +10,8 @@ import base64
 import time
 from openai import OpenAI
 from tqdm import tqdm
-import augly.video as vidaugs
 
+from src.training.augmentations import rand_augment_transform 
 
 class SyntheticDatasetLoader:
     PROMPT_FORMAT = """
@@ -31,7 +31,7 @@ class SyntheticDatasetLoader:
         Important: **Do not include the Original Answer** in the thinking process, only in the final part to avoid leaking the answer.
     """
 
-    def __init__(self, output_dir="dataset", frame_size=64, video_length=30, augment="crop,blur", augment_prob=0.1):
+    def __init__(self, output_dir="dataset", frame_size=64, video_length=30, augment_prob=0.1):
         base_path = Path(__file__).parent.resolve()
         self.output_dir = (base_path / output_dir).resolve()
         self.video_dir = self.output_dir / "videos"
@@ -61,8 +61,8 @@ class SyntheticDatasetLoader:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.video_dir.mkdir(parents=True, exist_ok=True)
 
-        self.augment = [a.strip().lower() for a in augment.split(",") if a.strip()]
         self.augment_prob = augment_prob
+        self.randaugment = rand_augment_transform("rand-m9-n2", hparams={"translate_const": 10})
 
         print(f"Dataset will be saved to: {self.output_dir}")
 
@@ -89,10 +89,7 @@ class SyntheticDatasetLoader:
             video_filename = f"{idx:03d}.mp4"
             video_path = self.video_dir / video_filename
             apply_augmentation = idx in augment_indices
-            self._generate_video(motion_type, video_path)
-
-            if apply_augmentation:
-                self._apply_augly_augmentation(video_path)
+            self._generate_video(motion_type, video_path, apply_augmentation)
 
             question = "<video>\nIn which direction is the ball moving?\nOptions:\n(A) Left to Right\n(B) Right to Left\n(C) Falling Down\n(D) Ascending"
             answer = self.option_labels[motion_type]
@@ -124,7 +121,7 @@ class SyntheticDatasetLoader:
         print(f"Dataset split saved: {len(train_data)} train / {len(val_data)} val")
         print(f"Video files saved in: {self.video_dir.resolve()}")
 
-    def _generate_video(self, motion_type, save_path):
+    def _generate_video(self, motion_type, save_path, apply_augmentation=False):
         pygame.init()
         screen = pygame.Surface((self.screen_width, self.screen_height))
 
@@ -152,29 +149,15 @@ class SyntheticDatasetLoader:
             screen.fill(black)
             pygame.draw.circle(screen, white, (int(x), int(y)), radius)
             frame = pygame.surfarray.array3d(screen).transpose([1, 0, 2])
-            frames.append(frame)
+            img = Image.fromarray(frame.astype("uint8"))
+            frames.append(img)
 
+        if apply_augmentation:
+            frames = self.randaugment(frames)
+
+        frames = [np.array(f) for f in frames]
         imageio.mimsave(save_path, frames, fps=30)
         pygame.quit()
-
-    def _apply_augly_augmentation(self, video_path):
-        if "crop" in self.augment:
-            # Apply cropping with specified parameters
-            vidaugs.crop(
-                video_path=str(video_path),
-                output_path=str(video_path),
-                left=0.1,
-                top=0.1,
-                right=0.9,
-                bottom=0.9
-            )
-        if "blur" in self.augment:
-            # Apply blurring with specified sigma
-            vidaugs.blur(
-                video_path=str(video_path),
-                output_path=str(video_path),
-                sigma=1.0
-            )
 
     def _create_motion_composite(self, video_path):
         reader = imageio.get_reader(video_path)
@@ -232,7 +215,6 @@ if __name__ == "__main__":
     parser.add_argument("--split", type=float, default=0.8, help="Train/val split ratio (default: 0.8 for 80% train).")
     parser.add_argument("--frame_size", type=int, default=64, help="Width/height of video frames.")
     parser.add_argument("--video_length", type=int, default=30, help="Number of frames per video.")
-    parser.add_argument("--augment", type=str, default="crop,blur", help="Comma-separated augmentations to apply. Options: crop, blur")
     parser.add_argument("--augment_prob", type=float, default=0.1, help="Fraction of videos to augment (0.0 to 1.0). Default: 0.1")
 
     args = parser.parse_args()
@@ -241,7 +223,6 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         frame_size=args.frame_size,
         video_length=args.video_length,
-        augment=args.augment,
         augment_prob=args.augment_prob,
     )
 
