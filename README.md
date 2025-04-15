@@ -142,8 +142,8 @@ We also provide a GRPO (Group Relative Policy Optimization) training script with
 PYTHONPATH=src:$PYTHONPATH \
 python src/training/train_grpo.py \
     --model_id Qwen/Qwen2.5-VL-3B-Instruct \
-    --model_ckpt ./output/video_lora/checkpoint-19 \ # Here put your LoRA ckp after SFT!!
-    --data_path ./data/synthetic_videos/train.json \
+    --model_ckpt ./output/video_lora/checkpoint-19 \ # 
+    --data_path ./data/synthetic_videos/train.json \ # Put here the correct ckp after SFT!!
     --image_folder ./data/synthetic_videos/videos \
     --output_dir output/grpo_video_lora \
     --per_device_train_batch_size 8 \
