@@ -85,9 +85,13 @@ def train():
         **bnb_args,
     )
 
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    
     processor = AutoProcessor.from_pretrained(
         model_args.model_id,
         padding_side="right",
+        use_fast=True
     )
 
     model.config.use_cache = False
