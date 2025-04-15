@@ -158,28 +158,23 @@ class SyntheticDatasetLoader:
         pygame.quit()
 
     def _apply_augly_augmentation(self, video_path):
-        tmp_path = str(video_path) + ".aug.mp4"
-
-        # Apply crop
         if "crop" in self.augment:
+            # Apply cropping with specified parameters
             vidaugs.crop(
-                str(video_path),
-                output_path=tmp_path,
-                x1=2,
-                y1=2,
-                x2=self.screen_width - 2,
-                y2=self.screen_height - 2,
+                video_path=str(video_path),
+                output_path=str(video_path),
+                left=0.1,
+                top=0.1,
+                right=0.9,
+                bottom=0.9
             )
-            os.replace(tmp_path, video_path)
-
-        # Apply blur
         if "blur" in self.augment:
+            # Apply blurring with specified sigma
             vidaugs.blur(
-                str(video_path),
-                output_path=tmp_path,
-                sigma=3.0,
+                video_path=str(video_path),
+                output_path=str(video_path),
+                sigma=1.0
             )
-            os.replace(tmp_path, video_path)
 
     def _create_motion_composite(self, video_path):
         reader = imageio.get_reader(video_path)
