@@ -1,19 +1,17 @@
-# Qwen2.5VL-R1
+# Qwen2.5VL-R1: Video Classification Fine-Tuning
 
-🚀 **Qwen2.5VL-R1** is an optimized variant of [Qwen2.5-VL](https://github.com/QwenLM/Qwen-VL) tailored for **video classification with reasoning** using Chain-of-Thought (CoT) prompting and visual grounding.
+🚀 **Qwen2.5VL-R1** is a project for fine-tuning Qwen2.5-VL on a synthetic video classification task, optimized for a single-GPU setup. It includes a complete pipeline for generating synthetic video data, applying augmentations, fine-tuning with LoRA, and running inference.
 
 ---
 
-## 🧠 Key Features
+## 🧠 Objective
 
-- 📹 **Video Reasoning Dataset Generator**  
-  Create synthetic motion-based video clips labeled with direction + reasoning steps using GPT-4V.
+This project demonstrates fine-tuning a multimodal large language model (MLLM), specifically `Qwen2.5-VL-3B-Instruct`, for a simple video classification task (similar to Kinetics-400). The task involves classifying the direction of a moving ball in synthetic videos into one of four classes:
 
-- 🧪 **LoRA Fine-tuning Support**  
-  Lightweight fine-tuning of Qwen2.5-VL with visual adapters using [DeepSpeed ZeRO-2](https://www.deepspeed.ai/tutorials/zero/).
-
-- 🧠 **Multimodal Reasoning Engine**  
-  Custom forward methods for mixed visual/textual tokens and temporal CoT-style reasoning.
+- Left to Right  
+- Right to Left  
+- Falling Down  
+- Ascending
 
 ---
 
@@ -22,113 +20,168 @@
 ```
 qwen2.5VL-R1/
 ├── README.md
+├── Dockerfile
 ├── environment.yaml
 ├── requirements.txt
 ├── video_generator.py
+├── .dockerignore
+├── data/
+│   └── synthetic_videos/
+│       ├── train.json
+│       ├── val.json
+│       └── videos/
 ├── scripts/
-│   ├── run_training.py
 │   ├── demo.py
+│   ├── run_finetuning.py
 │   └── zero2_offload.json
 └── src/
     └── training/
+        ├── __init__.py
+        ├── constants.py
+        ├── data.py
+        ├── modality_patch.py
+        ├── params.py
+        ├── rewards.py
         ├── train.py
         ├── train_grpo.py
-        ├── data.py
-        ├── trainer.py
-        ├── params.py
-        ├── modality_patch.py
-        └── constants.py
+        ├── train_utils.py
+        └── trainer.py
 ```
 
 ---
 
 ## 🔧 Setup
 
+### Prerequisites
+
+- OS: Ubuntu 20.04 or later  
+- Python: 3.8+  
+- GPU: Single NVIDIA GPU (T4, A100, etc.) with CUDA 11.7+  
+- Dependencies: Listed in `requirements.txt`
+
+### Installation
+
+Clone the repository:
+
 ```bash
-# Clone repo
 git clone https://github.com/yourname/qwen2.5VL-R1.git
 cd qwen2.5VL-R1
+```
 
-# Create virtual environment
+Create a virtual environment:
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
 
-# Install dependencies
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
+```
+
+**Optional: Conda**
+
+```bash
+conda env create -f environment.yaml
+conda activate qwen2.5VL-R1
+```
+
+**Optional: Docker**
+
+```bash
+docker build -t qwen2.5vl-r1 .
+docker run -it --gpus all qwen2.5vl-r1 bash
 ```
 
 ---
 
-## 📼 Generate Dataset
+## 📼 Generate Synthetic Dataset
+
+Generate synthetic videos of a moving ball with corresponding labels and optional CoT (Chain-of-Thought) annotations:
 
 ```bash
 python video_generator.py \
   --output_dir ./data/synthetic_videos \
   --num_samples 20 \
-  --cot \
   --frame_size 64 \
   --video_length 30 \
-  --split 0.8
+  --split 0.8 \
+  --augment_prob 0.2 \
+  --augment blur,crop
 ```
 
-> ⚠️ Requires `OPENAI_API_KEY` in your environment if `--cot` is enabled.
+- Output: Saves videos in `data/synthetic_videos/videos/` and metadata in `train.json` and `val.json`.  
+- Note: CoT generation (`--cot`) requires an `OPENAI_API_KEY` environment variable but is disabled by default.  
+- Augmentations: Applies blur and crop to 20% of videos for robustness.
 
 ---
 
-## 🧪 Fine-tuning (LoRA)
+## 🧪 Fine-Tuning
 
-Run the unified training CLI with the following options:
+Fine-tune `Qwen2.5-VL-3B-Instruct` using LoRA for efficiency. The pipeline leverages DeepSpeed ZeRO-2 for GPU memory optimization.
 
-### ▶️ Regular LoRA fine-tuning
+### Regular LoRA Fine-Tuning
 
 ```bash
 python scripts/run_finetuning.py \
   --model_id Qwen/Qwen2.5-VL-3B-Instruct \
   --data_path ./data/synthetic_videos/train.json \
   --image_folder ./data/synthetic_videos/videos \
-  --output_dir ./output/video_lora
+  --output_dir ./output/video_lora \
+  --num_train_epochs 1 \
+  --batch_size 1 \
+  --global_batch_size 5 \
+  --num_devices 1 \
+  --fps 1.0 \
+  --video_max_pixels 4096 \
+  --lr 2e-4 \
+  --lora_rank 64 \
+  --lora_alpha 64 \
+  --lora_dropout 0.05
 ```
 
-### ▶️ GRPO fine-tuning
+### GRPO Fine-Tuning (Optional)
+
+For advanced users, GRPO (Gradient-based Reward Policy Optimization) fine-tuning is available:
 
 ```bash
-python scripts/run_training.py \
+python scripts/run_finetuning.py \
   --use_grpo True \
   --model_id Qwen/Qwen2.5-VL-3B-Instruct \
   --data_path ./data/synthetic_videos/train.json \
   --image_folder ./data/synthetic_videos/videos \
-  --output_dir ./output/grpo_video_lora
+  --output_dir ./output/grpo_video_lora \
+  --num_train_epochs 1 \
+  --batch_size 1 \
+  --global_batch_size 5 \
+  --num_devices 1 \
+  --fps 1.0 \
+  --video_max_pixels 4096 \
+  --lr 2e-4 \
+  --lora_rank 64 \
+  --lora_alpha 64 \
+  --lora_dropout 0.05
 ```
 
-You can tweak additional args like `--batch_size`, `--lr`, `--lora_rank`, `--fps`, and `--video_max_pixels`.
+- Output: Checkpoints are saved in `./output/video_lora/` or `./output/grpo_video_lora/`.  
+- Metrics: Training loss and accuracy are logged every step to TensorBoard.  
+- Optimization: Uses bf16 precision, gradient checkpointing, and DeepSpeed ZeRO-2 for memory optimization.
 
 ---
 
 ## 🧠 Inference Demo
 
+Test the fine-tuned model on a video:
+
 ```bash
 python scripts/demo.py \
+  --model_ckpt ./output/video_lora/checkcheckpoint-25 \
+  --base_model Qwen/Qwen2.5-VL-3B-Instruct \
   --video_path ./data/synthetic_videos/videos/000.mp4 \
-  --prompt "What is happening in this video?"
+  --prompt "In which direction is the ball moving?\nOptions:\n(A) Left to Right\n(B) Right to Left\n(C) Falling Down\n(D) Ascending" \
+  --fps 1.0
 ```
 
----
-
-## 📎 Notes
-
-- Base model: `Qwen/Qwen2.5-VL-3B-Instruct`
-- Chain-of-Thought reasoning uses `<think>` and `<answer>` tags
-- Supports DeepSpeed + FlashAttention for scalable training
-
----
-
-## 📚 Credits
-
-- [Qwen2.5-VL](https://github.com/QwenLM/Qwen-VL) by Alibaba DAMO
-- PEFT + LoRA via [Hugging Face PEFT](https://github.com/huggingface/peft)
-
----
-
-## 🛡 License
-
-MIT (or inherit from base model — update as appropriate)
+- Output: Prints the model’s prediction, including reasoning steps (if trained with CoT) and the final answer.
