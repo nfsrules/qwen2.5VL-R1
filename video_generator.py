@@ -11,7 +11,7 @@ import time
 from openai import OpenAI
 from tqdm import tqdm
 from augly.video.transforms import Crop, VideoCompression
-import augly.video.functional as vf
+import augly.video as vidaugs
 
 
 class SyntheticDatasetLoader:
@@ -159,13 +159,28 @@ class SyntheticDatasetLoader:
         pygame.quit()
 
     def _apply_augly_augmentation(self, video_path):
-        transforms = []
-        if "crop" in self.augment:
-            transforms.append(Crop(top=2, left=2, height=60, width=60))
-        if "blur" in self.augment:
-            transforms.append(VideoCompression(compression_rate=25))
+        tmp_path = str(video_path) + ".aug.mp4"
 
-        vf.apply_transforms(video_path=str(video_path), output_path=str(video_path), transforms=transforms)
+        # Apply crop
+        if "crop" in self.augment:
+            vidaugs.crop(
+                str(video_path),
+                output_path=tmp_path,
+                x1=2,
+                y1=2,
+                x2=self.screen_width - 2,
+                y2=self.screen_height - 2,
+            )
+            os.replace(tmp_path, video_path)
+
+        # Apply blur
+        if "blur" in self.augment:
+            vidaugs.blur(
+                str(video_path),
+                output_path=tmp_path,
+                sigma=3.0,
+            )
+            os.replace(tmp_path, video_path)
 
     def _create_motion_composite(self, video_path):
         reader = imageio.get_reader(video_path)
