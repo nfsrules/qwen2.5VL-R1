@@ -1,7 +1,6 @@
 import re
 
 
-# === Tag extractors ===
 def extract_think(text):
     match = re.search(r"<think>(.*?)</think>", text, re.DOTALL)
     return match.group(1).strip() if match else None
@@ -12,14 +11,12 @@ def extract_answer(text):
     return match.group(1).strip() if match else None
 
 
-# === Prompt/completion flattening ===
 def flatten_prompt(prompt):
     if isinstance(prompt, list):
         return "\n".join(f"{m['role'].capitalize()}: {m['content']}" for m in prompt)
-    return prompt  # already a string
+    return prompt
 
 
-# === Reward 1: Strict format match ===
 def match_format_exactly(prompts=None, completions=None, **kwargs):
     scores = []
     for i, c in enumerate(completions):
@@ -34,7 +31,6 @@ def match_format_exactly(prompts=None, completions=None, **kwargs):
     return scores
 
 
-# === Reward 2: Partial tag presence ===
 def match_format_approximately(prompts=None, completions=None, **kwargs):
     scores = []
     for i, c in enumerate(completions):
@@ -59,7 +55,6 @@ def check_answer(prompts=None, completions=None, **kwargs):
         expected = extract_answer(prompt_str)
         predicted = extract_answer(completion_str)
 
-        # Fallback: extract answer letter like (A), (B), etc.
         if not predicted:
             match = re.search(r"\(([A-D])\)", completion_str)
             if match:
@@ -91,7 +86,6 @@ def check_answer(prompts=None, completions=None, **kwargs):
     return scores
 
 
-# === Reward 4: Reasoning step effort ===
 def check_reasoning_length(prompts=None, completions=None, **kwargs):
     scores = []
     for i, c in enumerate(completions):
