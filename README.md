@@ -21,7 +21,7 @@ This project demonstrates fine-tuning a multimodal large language model (MLLM), 
 
 - OS: Ubuntu 20.04
 - Python: 3.11.12 
-- GPU: NVIDIA A100-SXM4-40GB with CUDA 12.4 
+- GPU: NVIDIA > 16GB (Tested with A100-SXM4-40GB) and CUDA 12.4 
 - Dependencies: Listed in `requirements.txt` (install with `pip install -r requirements.txt`)
 
 

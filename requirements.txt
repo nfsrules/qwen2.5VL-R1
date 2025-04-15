@@ -17,3 +17,4 @@ tqdm==4.67.1
 transformers==4.51.1
 trl==0.16.1
 ujson==5.10.0
+flash-attn==2.7.4.post1
