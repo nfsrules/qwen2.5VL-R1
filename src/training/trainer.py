@@ -48,7 +48,6 @@ class QwenTrainer(Trainer):
     def create_optimizer(self):
         """
         Setup the optimizer.
-        We provide a reasonable default that works well. If you want to use something else, you can pass a tuple in the
         Trainer's init through `optimizers`, or subclass and override this method in a subclass.
         """
         if is_sagemaker_mp_enabled():
@@ -272,8 +271,7 @@ class QwenTrainer(Trainer):
             if not is_peft_available()
             else (PreTrainedModel, PeftModel)
         )
-        # Save a trained model and configuration using `save_pretrained()`.
-        # They can then be reloaded using `from_pretrained()`
+
         if not isinstance(self.model, supported_classes):
             if state_dict is None:
                 state_dict = self.model.state_dict()

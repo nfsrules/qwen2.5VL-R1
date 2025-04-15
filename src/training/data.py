@@ -56,8 +56,6 @@ def pad_sequence(sequences, padding_side="right", padding_value=0):
 
 
 def get_image_info(image_path, min_pixel, max_pixel, width, height):
-    # Using this because of process_vision_info function
-    # Need to fix this in the future
 
     content = {
         "type": "image",
@@ -78,8 +76,6 @@ def get_image_info(image_path, min_pixel, max_pixel, width, height):
 
 
 def get_video_info(video_path, min_pixels, max_pixels, width, height, fps):
-    # Using this because of process_vision_info function
-    # Need to fix this in the future
     content = {
         "type": "video",
         "video": video_path,
@@ -211,7 +207,6 @@ class SupervisedDataset(Dataset):
         all_image_grid_thw = []
         all_second_gird = []
 
-        # Qwen2-VL uses a default system message so I've added this.
         if len(SYSTEM_MESSAGE) > 0:
             system_message = f"{DEFAULT_IM_START_TOKEN}system\n{SYSTEM_MESSAGE}{DEFAULT_IM_END_TOKEN}\n"
             system_message_input_ids = processor.tokenizer(
@@ -293,14 +288,8 @@ class SupervisedDataset(Dataset):
             all_input_ids.append(input_ids)
             all_labels.append(labels)
 
-        # There is no need for eos or bos tokens in the input_ids
-        # Qwen2-VL does not use them
         input_ids = torch.cat(all_input_ids, dim=0).to(torch.long)
         labels = torch.cat(all_labels, dim=0).to(torch.long)
-
-        # eos_token_id = processor.tokenizer.convert_tokens_to_ids(DEFAULT_IM_END_TOKEN)
-        # input_ids, labels = truncate_sequence(input_ids, labels, self.max_length, eos_token_id)
-
         attention_mask = (input_ids > -1000000).to(torch.long)
 
         data_dict = dict(
@@ -326,14 +315,10 @@ class SupervisedDataset(Dataset):
             role = "user" if turn["from"] == "human" else "assistant"
             chat.append({"role": role, "content": turn["value"]})
 
-        # Extract prompt (user/system turns only)
         prompt = [m for m in chat if m["role"] != "assistant"]
-
-        # Extract target (final assistant response)
         answer_turns = [m for m in chat if m["role"] == "assistant"]
         answer = answer_turns[-1]["content"] if answer_turns else ""
 
-        # Save for GRPO
         data_dict["prompt"] = prompt
         data_dict["answer"] = answer
 
