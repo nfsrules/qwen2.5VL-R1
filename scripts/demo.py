@@ -74,9 +74,7 @@ def main(args):
             eos_token_id=processor.tokenizer.eos_token_id
         )
 
-    output_text = processor.tokenizer.decode(
-        generated_ids[0], skip_special_tokens=True
-    )
+    output_text = processor.tokenizer.decode(generated_ids[0], skip_special_tokens=True)
 
     print("\n========== MODEL OUTPUT ==========")
     print(output_text)

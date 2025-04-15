@@ -18,39 +18,15 @@ from rewards import (
     check_reasoning_length,
 )
 from liger_kernel.transformers import (
-    apply_liger_kernel_to_qwen2_vl,
     apply_liger_kernel_to_qwen2_5_vl,
 )
 from modality_patch import (
     replace_qwen2_5_with_mixed_modality_forward,
-    replace_qwen_2_with_mixed_modality_forward,
+)
+from training.train_utils import (
+    find_target_linear_names,
 )
 
-def find_target_linear_names(
-    model, num_lora_modules=-1, lora_namespan_exclude=[], verbose=True
-):
-    import torch
-    linear_cls = torch.nn.modules.Linear
-    embedding_cls = torch.nn.modules.Embedding
-    lora_module_names = []
-
-    for name, module in model.named_modules():
-        if any(ex_keyword in name for ex_keyword in lora_namespan_exclude):
-            continue
-        if isinstance(module, (linear_cls, embedding_cls)):
-            lora_module_names.append(name)
-
-    if num_lora_modules > 0:
-        lora_module_names = lora_module_names[-num_lora_modules:]
-
-    if verbose:
-        print(f"Found {len(lora_module_names)} lora modules: {lora_module_names}")
-
-    return lora_module_names
-
-def set_requires_grad(parameters, requires_grad):
-    for p in parameters:
-        p.requires_grad = requires_grad
 
 def train():
     parser = HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
@@ -61,34 +37,51 @@ def train():
         if training_args.use_liger:
             apply_liger_kernel_to_qwen2_5_vl(fused_linear_cross_entropy=False)
     else:
-        replace_qwen_2_with_mixed_modality_forward(use_liger=training_args.use_liger)
-        if training_args.use_liger:
-            apply_liger_kernel_to_qwen2_vl(fused_linear_cross_entropy=False)
+        raise ValueError("Unsupported model type. Only Qwen2.5 is supported.")
 
-    compute_dtype = torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32)
+    compute_dtype = (
+        torch.float16
+        if training_args.fp16
+        else (torch.bfloat16 if training_args.bf16 else torch.float32)
+    )
 
     bnb_args = {}
     if training_args.bits in [4, 8]:
-        bnb_args.update({
-            "device_map": {"": training_args.device},
-            "quantization_config": BitsAndBytesConfig(
-                load_in_4bit=training_args.bits == 4,
-                load_in_8bit=training_args.bits == 8,
-                llm_int8_skip_modules=["visual"],
-                llm_int8_threshold=6.0,
-                llm_int8_has_fp16_weight=False,
-                bnb_4bit_compute_dtype=compute_dtype,
-                bnb_4bit_use_double_quant=training_args.double_quant,
-                bnb_4bit_quant_type=training_args.quant_type,
-            )
-        })
+        bnb_args.update(
+            {
+                "device_map": {"": training_args.device},
+                "quantization_config": BitsAndBytesConfig(
+                    load_in_4bit=training_args.bits == 4,
+                    load_in_8bit=training_args.bits == 8,
+                    llm_int8_skip_modules=["visual"],
+                    llm_int8_threshold=6.0,
+                    llm_int8_has_fp16_weight=False,
+                    bnb_4bit_compute_dtype=compute_dtype,
+                    bnb_4bit_use_double_quant=training_args.double_quant,
+                    bnb_4bit_quant_type=training_args.quant_type,
+                ),
+            }
+        )
 
-    ModelClass = Qwen2_5_VLForConditionalGeneration if "Qwen2.5" in model_args.model_id else Qwen2VLForConditionalGeneration
+    # Use --model_ckpt if provided
+    model_path = model_args.model_ckpt or model_args.model_id
+    if model_args.model_ckpt:
+        print(f"[INFO] Overriding model_id with checkpoint: {model_args.model_ckpt}")
+
+    model_arch_hint = model_args.model_id or model_args.model_ckpt or ""
+    ModelClass = (
+        Qwen2_5_VLForConditionalGeneration
+        if "Qwen2.5" in model_arch_hint
+        else Qwen2VLForConditionalGeneration
+    )
+
     model = ModelClass.from_pretrained(
-        model_args.model_id,
+        model_path,
         torch_dtype=compute_dtype,
-        attn_implementation=("flash_attention_2" if not training_args.disable_flash_attn2 else "sdpa"),
-        **bnb_args
+        attn_implementation=(
+            "flash_attention_2" if not training_args.disable_flash_attn2 else "sdpa"
+        ),
+        **bnb_args,
     )
 
     processor = AutoProcessor.from_pretrained(
@@ -111,7 +104,9 @@ def train():
     # Apply LoRA if enabled
     if training_args.lora_enable:
         if training_args.lora_namespan_exclude is not None:
-            training_args.lora_namespan_exclude = ast.literal_eval(training_args.lora_namespan_exclude)
+            training_args.lora_namespan_exclude = ast.literal_eval(
+                training_args.lora_namespan_exclude
+            )
         else:
             training_args.lora_namespan_exclude = []
         if not training_args.vision_lora:
@@ -154,14 +149,17 @@ def train():
         train_dataset=data_module["train_dataset"],
         eval_dataset=data_module.get("eval_dataset"),
         processing_class=processor.tokenizer,
-        reward_funcs=[reward_correct_answer,
-    match_format_exactly,
-    match_format_approximately,
-    check_reasoning_length]
+        reward_funcs=[
+            reward_correct_answer,
+            match_format_exactly,
+            match_format_approximately,
+            check_reasoning_length,
+        ],
     )
 
     trainer.train()
     trainer.save_model(training_args.output_dir)
+
 
 if __name__ == "__main__":
     train()

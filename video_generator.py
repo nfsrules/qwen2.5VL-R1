@@ -64,9 +64,7 @@ class SyntheticDatasetLoader:
 
         print(f"Dataset will be saved to: {self.output_dir}")
 
-    def generate_dataset(
-        self, num_samples=10, cot=False, seed=42, split=None
-    ):
+    def generate_dataset(self, num_samples=10, cot=False, seed=42, split=None):
 
         if cot and not self.client:
             print(
@@ -74,9 +72,7 @@ class SyntheticDatasetLoader:
             )
             cot = False
 
-        print(
-            f"Starting dataset generation ({num_samples} samples, CoT: {cot})..."
-        )
+        print(f"Starting dataset generation ({num_samples} samples, CoT: {cot})...")
 
         random.seed(seed)
         all_metadata = []
@@ -107,9 +103,7 @@ class SyntheticDatasetLoader:
                     composite_image, question, answer
                 )
                 full_answer = (
-                    cot_response.strip()
-                    if cot_response
-                    else f"Answer: {answer}"
+                    cot_response.strip() if cot_response else f"Answer: {answer}"
                 )
             else:
                 full_answer = f"Answer: {answer}"
@@ -133,9 +127,7 @@ class SyntheticDatasetLoader:
         with open(self.output_dir / "val.json", "w") as f:
             json.dump(val_data, f, indent=2)
 
-        print(
-            f"Dataset split saved: {len(train_data)} train / {len(val_data)} val"
-        )
+        print(f"Dataset split saved: {len(train_data)} train / {len(val_data)} val")
         print(f"Video files saved in: {self.video_dir.resolve()}")
 
     def _generate_video(self, motion_type, save_path):
@@ -172,16 +164,13 @@ class SyntheticDatasetLoader:
         imageio.mimsave(save_path, frames, fps=30)
         pygame.quit()
 
-    def _create_motion_composite(
-        self, video_path
-    ):
+    def _create_motion_composite(self, video_path):
         reader = imageio.get_reader(video_path)
         num_frames = reader.count_frames()
         sample_indices = [int(i * (num_frames - 1) / 3) for i in range(4)]
 
         frames = [
-            Image.fromarray(reader.get_data(i)).convert("RGBA")
-            for i in sample_indices
+            Image.fromarray(reader.get_data(i)).convert("RGBA") for i in sample_indices
         ]
         base = frames[0].copy()
         for f in frames[1:]:
@@ -194,7 +183,9 @@ class SyntheticDatasetLoader:
         def image_to_base64(img: Image.Image):
             buffer = BytesIO()
             img.convert("RGB").save(buffer, format="JPEG")
-            return f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode()}"
+            return (
+                f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode()}"
+            )
 
         prompt = self.PROMPT_FORMAT.format(
             original_question=question, original_answer=answer

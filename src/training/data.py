@@ -45,9 +45,7 @@ def pad_sequence(sequences, padding_side="right", padding_value=0):
     trailing_dims = max_size[1:]
     max_len = max(len(seq) for seq in sequences)
     batch_size = len(sequences)
-    output = sequences[0].new_full(
-        (batch_size, max_len) + trailing_dims, padding_value
-    )
+    output = sequences[0].new_full((batch_size, max_len) + trailing_dims, padding_value)
     for i, seq in enumerate(sequences):
         length = seq.size(0)
         if padding_side == "right":
@@ -219,9 +217,7 @@ class SupervisedDataset(Dataset):
             system_message_input_ids = processor.tokenizer(
                 system_message, add_special_tokens=False, return_tensors="pt"
             )["input_ids"]
-            system_labels = torch.full_like(
-                system_message_input_ids, IGNORE_INDEX
-            )
+            system_labels = torch.full_like(system_message_input_ids, IGNORE_INDEX)
 
             all_input_ids.append(system_message_input_ids.squeeze(0))
             all_labels.append(system_labels.squeeze(0))
@@ -231,9 +227,7 @@ class SupervisedDataset(Dataset):
             gpt_response = sources[j + 1]
 
             user_input = f"{DEFAULT_IM_START_TOKEN}{user_input['role']}\n{user_input['content']}{DEFAULT_IM_END_TOKEN}\n{DEFAULT_IM_START_TOKEN}{gpt_response['role']}\n"
-            gpt_response = (
-                f"{gpt_response['content']}{DEFAULT_IM_END_TOKEN}\n"
-            )
+            gpt_response = f"{gpt_response['content']}{DEFAULT_IM_END_TOKEN}\n"
 
             if DEFAULT_IMAGE_TOKEN in user_input:
                 inputs = processor(
@@ -364,9 +358,7 @@ class DataCollatorForSupervisedDataset(object):
         for example in examples:
             keys = example.keys()
             if "pixel_values_videos" in keys:
-                batch_pixel_video_values.append(
-                    example["pixel_values_videos"]
-                )
+                batch_pixel_video_values.append(example["pixel_values_videos"])
                 batch_video_thw.append(example["video_grid_thw"])
             elif "pixel_values" in keys:
                 batch_pixel_values.append(example["pixel_values"])
@@ -376,9 +368,7 @@ class DataCollatorForSupervisedDataset(object):
             batch_label_ids.append(example["labels"])
 
             if "second_per_grid_ts" in keys:
-                batch_second_per_grid_ts.extend(
-                    example["second_per_grid_ts"]
-                )
+                batch_second_per_grid_ts.extend(example["second_per_grid_ts"])
 
         input_ids = pad_sequence(
             batch_input_ids,
@@ -418,14 +408,10 @@ class DataCollatorForSupervisedDataset(object):
 def replace_image_tokens(input_string, is_video=False):
     if is_video:
         pattern = r"\n?" + re.escape(LLAVA_VIDEO_TOKEN) + r"\n?"
-        replacement = (
-            VISION_START_TOKEN + DEFAULT_VIDEO_TOKEN + VISION_END_TOKEN
-        )
+        replacement = VISION_START_TOKEN + DEFAULT_VIDEO_TOKEN + VISION_END_TOKEN
     else:
         pattern = r"\n?" + re.escape(LLAVA_IMAGE_TOKEN) + r"\n?"
-        replacement = (
-            VISION_START_TOKEN + DEFAULT_IMAGE_TOKEN + VISION_END_TOKEN
-        )
+        replacement = VISION_START_TOKEN + DEFAULT_IMAGE_TOKEN + VISION_END_TOKEN
 
     return re.sub(pattern, replacement, input_string)
 
@@ -439,9 +425,7 @@ def llava_to_openai(conversations, is_video=False):
             conversation["value"], is_video=is_video
         )
         transformed_entry = {
-            "role": role_mapping.get(
-                conversation["from"], conversation["from"]
-            ),
+            "role": role_mapping.get(conversation["from"], conversation["from"]),
             "content": transformed_content,
         }
         transformed_data.append(transformed_entry)

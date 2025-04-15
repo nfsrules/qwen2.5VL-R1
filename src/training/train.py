@@ -1,11 +1,11 @@
 import os
 import torch
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from peft.tuners.lora import LoraLayer
 import ast
 from transformers import (
     AutoProcessor,
     BitsAndBytesConfig,
-    Qwen2VLForConditionalGeneration,
     HfArgumentParser,
     Qwen2_5_VLForConditionalGeneration,
 )
@@ -16,104 +16,34 @@ from training.train_utils import (
     get_peft_state_maybe_zero_3,
     get_peft_state_non_lora_maybe_zero_3,
     safe_save_model_for_hf_trainer,
+    configure_llm,
+    configure_vision_tower,
+    find_target_linear_names,
+    rank0_print,
 )
 import pathlib
 from liger_kernel.transformers import (
-    apply_liger_kernel_to_qwen2_vl,
     apply_liger_kernel_to_qwen2_5_vl,
 )
-from modality_patch import (
-    replace_qwen2_5_with_mixed_modality_forward,
-    replace_qwen_2_with_mixed_modality_forward,
-)
-
-local_rank = None
-
-
-def rank0_print(*args):
-    if local_rank == 0 or local_rank == "0" or local_rank is None:
-        print(*args)
-
-
-def find_target_linear_names(
-    model, num_lora_modules=-1, lora_namespan_exclude=[], verbose=True
-):
-    linear_cls = torch.nn.modules.Linear
-    embedding_cls = torch.nn.modules.Embedding
-    lora_module_names = []
-
-    for name, module in model.named_modules():
-        if any(ex_keyword in name for ex_keyword in lora_namespan_exclude):
-            continue
-        if isinstance(module, (linear_cls, embedding_cls)):
-            lora_module_names.append(name)
-
-    if num_lora_modules > 0:
-        lora_module_names = lora_module_names[-num_lora_modules:]
-    if verbose:
-        rank0_print(
-            f"Found {len(lora_module_names)} lora modules: {lora_module_names}"
-        )
-    return lora_module_names
-
-
-def set_requires_grad(parameters, requires_grad):
-    for p in parameters:
-        p.requires_grad = requires_grad
-
-
-def configure_vision_tower(model, training_args, compute_dtype, device):
-    vision_tower = model.visual
-    vision_tower.to(dtype=compute_dtype, device=device)
-
-    vision_model_params = model.visual.parameters()
-    set_requires_grad(
-        vision_model_params, not training_args.freeze_vision_tower
-    )
-
-    # Handle merger specifically
-    merger_params = model.visual.merger.parameters()
-    set_requires_grad(merger_params, training_args.tune_merger)
-
-
-def configure_llm(model, training_args):
-    lm_head = model.lm_head.parameters()
-    set_requires_grad(lm_head, not training_args.freeze_llm)
-
-    llm_params = model.model.parameters()
-    set_requires_grad(llm_params, not training_args.freeze_llm)
+from modality_patch import replace_qwen2_5_with_mixed_modality_forward
 
 
 def train():
     global local_rank
 
-    parser = HfArgumentParser(
-        (ModelArguments, DataArguments, TrainingArguments)
-    )
+    parser = HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
 
-    model_args, data_args, training_args = (
-        parser.parse_args_into_dataclasses()
-    )
+    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     use_liger = training_args.use_liger
     if "Qwen2.5" in model_args.model_id:
-        # It monkey patches the forward to handle mixed modality inputs.
         replace_qwen2_5_with_mixed_modality_forward(use_liger=use_liger)
-        # This is becuase mixed-modality training monkey-patches the model forward method.
         if use_liger:
-            apply_liger_kernel_to_qwen2_5_vl(
-                fused_linear_cross_entropy=False
-            )
+            apply_liger_kernel_to_qwen2_5_vl(fused_linear_cross_entropy=False)
     else:
-        # It monkey patches the forward to handle mixed modality inputs.
-        replace_qwen_2_with_mixed_modality_forward(use_liger=use_liger)
-        # This is becuase mixed-modality training monkey-patches the model forward method.
-        if use_liger:
-            apply_liger_kernel_to_qwen2_vl(fused_linear_cross_entropy=False)
+        raise ValueError("Unsupported model type. Only Qwen2.5 is supported.")
 
     if training_args.lora_enable and not training_args.freeze_llm:
-        raise ValueError(
-            "If `lora_enable` is True, `freeze_llm` must also be True."
-        )
+        raise ValueError("If `lora_enable` is True, `freeze_llm` must also be True.")
 
     if not training_args.lora_enable:
         assert (
@@ -161,28 +91,14 @@ def train():
             )
         )
 
-    if "Qwen2.5" in model_args.model_id:
-        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            model_args.model_id,
-            torch_dtype=compute_dtype,
-            attn_implementation=(
-                "flash_attention_2"
-                if not training_args.disable_flash_attn2
-                else "sdpa"
-            ),
-            **bnb_model_from_pretrained_args,
-        )
-    else:
-        model = Qwen2VLForConditionalGeneration.from_pretrained(
-            model_args.model_id,
-            torch_dtype=compute_dtype,
-            attn_implementation=(
-                "flash_attention_2"
-                if not training_args.disable_flash_attn2
-                else "sdpa"
-            ),
-            **bnb_model_from_pretrained_args,
-        )
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+        model_args.model_id,
+        torch_dtype=compute_dtype,
+        attn_implementation=(
+            "flash_attention_2" if not training_args.disable_flash_attn2 else "sdpa"
+        ),
+        **bnb_model_from_pretrained_args,
+    )
 
     model.config.use_cache = False
     model_to_configure = model
@@ -200,7 +116,6 @@ def train():
             if training_args.fp16
             else (torch.bfloat16 if training_args.bf16 else torch.float32)
         )
-        from peft import prepare_model_for_kbit_training
 
         model = prepare_model_for_kbit_training(
             model,
@@ -235,17 +150,13 @@ def train():
 
     processor = AutoProcessor.from_pretrained(
         model_args.model_id,
-        # The default setting is padding_side="left"
-        # When training using the right-side padding is more efficient.
         padding_side="right",
     )
 
-    # model.config.tokenizer_model_max_length = processor.tokenizer.model_max_length
     model.config.tokenizer_padding_side = processor.tokenizer.padding_side
     model.config.vision_lr = training_args.vision_lr
 
     if training_args.bits in [4, 8]:
-        from peft.tuners.lora import LoraLayer
 
         for name, module in model.named_modules():
             if isinstance(module, LoraLayer):
@@ -256,10 +167,7 @@ def train():
 
             if "lm_head" in name or "embed_token" in name:
                 if hasattr(module, "weight"):
-                    if (
-                        training_args.bf16
-                        and module.weight.dtype == torch.float32
-                    ):
+                    if training_args.bf16 and module.weight.dtype == torch.float32:
                         module = module.to(torch.bfloat16)
 
     data_module = make_supervised_data_module(
@@ -292,19 +200,13 @@ def train():
 
         if local_rank == 0 or local_rank == -1:
             model.config.save_pretrained(training_args.output_dir)
-            model.save_pretrained(
-                training_args.output_dir, state_dict=state_dict
-            )
+            model.save_pretrained(training_args.output_dir, state_dict=state_dict)
             torch.save(
                 non_lora_state_dict,
-                os.path.join(
-                    training_args.output_dir, "non_lora_state_dict.bin"
-                ),
+                os.path.join(training_args.output_dir, "non_lora_state_dict.bin"),
             )
     else:
-        safe_save_model_for_hf_trainer(
-            trainer, output_dir=training_args.output_dir
-        )
+        safe_save_model_for_hf_trainer(trainer, output_dir=training_args.output_dir)
 
 
 if __name__ == "__main__":

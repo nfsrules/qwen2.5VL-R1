@@ -1,19 +1,23 @@
 import re
 
+
 # === Tag extractors ===
 def extract_think(text):
     match = re.search(r"<think>(.*?)</think>", text, re.DOTALL)
     return match.group(1).strip() if match else None
 
+
 def extract_answer(text):
     match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
     return match.group(1).strip() if match else None
+
 
 # === Prompt/completion flattening ===
 def flatten_prompt(prompt):
     if isinstance(prompt, list):
         return "\n".join(f"{m['role'].capitalize()}: {m['content']}" for m in prompt)
     return prompt  # already a string
+
 
 # === Reward 1: Strict format match ===
 def match_format_exactly(prompts=None, completions=None, **kwargs):
@@ -23,9 +27,12 @@ def match_format_exactly(prompts=None, completions=None, **kwargs):
         has_think = "<think>" in c_str and "</think>" in c_str
         has_answer = "<answer>" in c_str and "</answer>" in c_str
         score = 3.0 if has_think and has_answer else 0.0
-        print(f"[ExactFormat] Ex {i} | has_think: {has_think}, has_answer: {has_answer} → score: {score}")
+        print(
+            f"[ExactFormat] Ex {i} | has_think: {has_think}, has_answer: {has_answer} → score: {score}"
+        )
         scores.append(score)
     return scores
+
 
 # === Reward 2: Partial tag presence ===
 def match_format_approximately(prompts=None, completions=None, **kwargs):
@@ -40,6 +47,7 @@ def match_format_approximately(prompts=None, completions=None, **kwargs):
         print(f"[ApproxFormat] Ex {i} | score: {score}")
         scores.append(score)
     return scores
+
 
 def check_answer(prompts=None, completions=None, **kwargs):
     scores = []
@@ -82,41 +90,6 @@ def check_answer(prompts=None, completions=None, **kwargs):
 
     return scores
 
-# === Reward 3: Answer correctness with partial credit ===
-def check_answer_(prompts=None, completions=None, **kwargs):
-    scores = []
-    print("prompts", prompts)
-    print("completions", completions)
-
-    for i, (prompt, completion) in enumerate(zip(prompts, completions)):
-        prompt_str = flatten_prompt(prompt)
-        completion_str = flatten_prompt(completion)
-
-        expected = extract_answer(prompt_str)
-        predicted = extract_answer(completion_str)
-
-        print(f"[CheckAnswer] Ex {i} | Expected: {expected} | Predicted: {predicted}")
-
-        if not expected or not predicted:
-            scores.append(0.0)
-            print(f"[CheckAnswer] Ex {i} → score: 0.0 (missing)")
-            continue
-
-        expected = expected.strip().lower()
-        predicted = predicted.strip().lower()
-
-        if predicted == expected:
-            score = 3.0
-        elif any(part.strip() in expected for part in predicted.split()) or predicted in expected:
-            score = 1.5
-        elif re.search(r"\(([a-d])\)", expected) and predicted in expected:
-            score = 1.0
-        else:
-            score = -1.0
-
-        print(f"[CheckAnswer] Ex {i} → score: {score}")
-        scores.append(score)
-    return scores
 
 # === Reward 4: Reasoning step effort ===
 def check_reasoning_length(prompts=None, completions=None, **kwargs):

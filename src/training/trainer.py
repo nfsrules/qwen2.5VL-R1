@@ -57,12 +57,8 @@ class QwenTrainer(Trainer):
         opt_model = self.model
 
         if self.optimizer is None:
-            decay_parameters = get_parameter_names(
-                opt_model, ALL_LAYERNORM_LAYERS
-            )
-            decay_parameters = [
-                name for name in decay_parameters if "bias" not in name
-            ]
+            decay_parameters = get_parameter_names(opt_model, ALL_LAYERNORM_LAYERS)
+            decay_parameters = [name for name in decay_parameters if "bias" not in name]
             lr_mapper = {}
             visual_parameters = []
             merger_parameters = []
@@ -77,9 +73,7 @@ class QwenTrainer(Trainer):
             if self.args.merger_lr is not None:
                 lr_mapper["merger"] = self.args.merger_lr
                 merger_parameters = [
-                    name
-                    for name, _ in opt_model.named_parameters()
-                    if "merger" in name
+                    name for name, _ in opt_model.named_parameters() if "merger" in name
                 ]
 
             if len(lr_mapper) > 0:
@@ -189,15 +183,13 @@ class QwenTrainer(Trainer):
                         "params": [
                             p
                             for n, p in opt_model.named_parameters()
-                            if (
-                                n not in decay_parameters and p.requires_grad
-                            )
+                            if (n not in decay_parameters and p.requires_grad)
                         ],
                         "weight_decay": 0.0,
                     },
                 ]
-            optimizer_cls, optimizer_kwargs = (
-                Trainer.get_optimizer_cls_and_kwargs(self.args)
+            optimizer_cls, optimizer_kwargs = Trainer.get_optimizer_cls_and_kwargs(
+                self.args
             )
 
             self.optimizer = optimizer_cls(
@@ -206,37 +198,28 @@ class QwenTrainer(Trainer):
             if optimizer_cls.__name__ == "Adam8bit":
                 import bitsandbytes
 
-                manager = (
-                    bitsandbytes.optim.GlobalOptimManager.get_instance()
-                )
+                manager = bitsandbytes.optim.GlobalOptimManager.get_instance()
 
                 skipped = 0
                 for module in opt_model.modules():
                     if isinstance(module, nn.Embedding):
                         skipped += sum(
                             {
-                                p.data_ptr(): p.numel()
-                                for p in module.parameters()
+                                p.data_ptr(): p.numel() for p in module.parameters()
                             }.values()
                         )
-                        logger.info(
-                            f"skipped {module}: {skipped/2**20}M params"
-                        )
+                        logger.info(f"skipped {module}: {skipped/2**20}M params")
                         manager.register_module_override(
                             module, "weight", {"optim_bits": 32}
                         )
-                        logger.debug(
-                            f"bitsandbytes: will optimize {module} in fp32"
-                        )
+                        logger.debug(f"bitsandbytes: will optimize {module} in fp32")
                 logger.info(f"skipped: {skipped/2**20}M params")
 
         return self.optimizer
 
     def _save_checkpoint(self, model, trial):
         if self.args.lora_enable:
-            checkpoint_folder = (
-                f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"
-            )
+            checkpoint_folder = f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"
 
             if self.hp_search_backend is None and trial is None:
                 self.store_flos()
@@ -263,12 +246,8 @@ class QwenTrainer(Trainer):
             # Save the Trainer state
             if self.args.should_save:
                 # Update the `TrainerControl` state to where we are currently
-                self.state.stateful_callbacks["TrainerControl"] = (
-                    self.control.state()
-                )
-                self.state.save_to_json(
-                    os.path.join(output_dir, TRAINER_STATE_NAME)
-                )
+                self.state.stateful_callbacks["TrainerControl"] = self.control.state()
+                self.state.save_to_json(os.path.join(output_dir, TRAINER_STATE_NAME))
 
             if self.args.push_to_hub:
                 self._push_from_checkpoint(output_dir)
@@ -284,9 +263,7 @@ class QwenTrainer(Trainer):
 
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
         # If we are executing this function, we are the process zero, so we don't check for that.
-        output_dir = (
-            output_dir if output_dir is not None else self.args.output_dir
-        )
+        output_dir = output_dir if output_dir is not None else self.args.output_dir
         os.makedirs(output_dir, exist_ok=True)
         logger.info(f"Saving model checkpoint to {output_dir}")
 
@@ -301,9 +278,7 @@ class QwenTrainer(Trainer):
             if state_dict is None:
                 state_dict = self.model.state_dict()
 
-            if isinstance(
-                self.accelerator.unwrap_model(self.model), supported_classes
-            ):
+            if isinstance(self.accelerator.unwrap_model(self.model), supported_classes):
                 self.accelerator.unwrap_model(self.model).save_pretrained(
                     output_dir,
                     state_dict=state_dict,
@@ -320,9 +295,7 @@ class QwenTrainer(Trainer):
                         metadata={"format": "pt"},
                     )
                 else:
-                    torch.save(
-                        state_dict, os.path.join(output_dir, WEIGHTS_NAME)
-                    )
+                    torch.save(state_dict, os.path.join(output_dir, WEIGHTS_NAME))
         else:
             self.model.save_pretrained(
                 output_dir,

@@ -7,6 +7,12 @@ from transformers import TrainingArguments
 @dataclass
 class ModelArguments:
     model_id: Optional[str] = field(default="Qwen/Qwen2-VL-7B-Instruct")
+    model_ckpt: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Path to a checkpoint directory to override model_id (e.g., a LoRA SFT output)"
+        },
+    )
 
 
 @dataclass
