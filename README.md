@@ -15,41 +15,6 @@ This project demonstrates fine-tuning a multimodal large language model (MLLM), 
 
 ---
 
-## 🗂️ Directory Structure
-
-```
-qwen2.5VL-R1/
-├── README.md
-├── Dockerfile
-├── environment.yaml
-├── requirements.txt
-├── video_generator.py
-├── .dockerignore
-├── data/
-│   └── synthetic_videos/
-│       ├── train.json
-│       ├── val.json
-│       └── videos/
-├── scripts/
-│   ├── demo.py
-│   ├── run_finetuning.py
-│   └── zero2_offload.json
-└── src/
-    └── training/
-        ├── __init__.py
-        ├── constants.py
-        ├── data.py
-        ├── modality_patch.py
-        ├── params.py
-        ├── rewards.py
-        ├── train.py
-        ├── train_grpo.py
-        ├── train_utils.py
-        └── trainer.py
-```
-
----
-
 ## 🔧 Setup
 
 ### Prerequisites
@@ -85,10 +50,10 @@ pip install -r requirements.txt
 
 ## 📼 Generate Synthetic Dataset
 
-Generate synthetic videos of a moving ball with corresponding labels and optional:
+Generate synthetic videos of a moving ball with corresponding labels and optional support for:
 
--  CoT (Chain-of-Thought) generation for reasoning models 
--  Two video augmentations supported (blur and crop)
+-  CoT (Chain-of-Thought) thinking generation for reasoning models 
+-  Video ugmentations (blur and crop) with default probability of 0.2
 
 
 ```bash
@@ -108,13 +73,14 @@ python video_generator.py \
 ```
 
 - Output: Saves videos in `data/synthetic_videos/videos/` and metadata in `train.json` and `val.json`.  
-- Note: If you do not haven and OpenAI api key you can directly **[Download the CoT dataset](https://drive.google.com/drive/folders/1t_vJBkh1sPne_Qd-xirkPEFkZLwoq3Fc?usp=drive_link)**
+- Note: If you do not have an OpenAI api key you can directly **[Download the CoT dataset](https://drive.google.com/drive/folders/1t_vJBkh1sPne_Qd-xirkPEFkZLwoq3Fc?usp=drive_link)**
 
 ---
 
 ## 🧪 Fine-Tuning
 
-Fine-tune `Qwen2.5-VL-3B-Instruct` using LoRA for efficiency. The pipeline leverages DeepSpeed ZeRO-2 for GPU memory optimization.
+Once generated the training dataset you can fine-tune `Qwen2.5-VL-3B-Instruct` using LoRA for efficiency.
+The pipeline leverages DeepSpeed ZeRO-2 for GPU memory optimization.
 
 ### Regular LoRA Fine-Tuning
 
@@ -136,9 +102,9 @@ python scripts/run_finetuning.py \
   --lora_dropout 0.05
 ```
 
-### GRPO Fine-Tuning (Optional)
+### GRPO Post-training (For reasoning models)
 
-For advanced users, GRPO (Gradient-based Reward Policy Optimization) fine-tuning is available:
+For advanced users, GRPO (Gradient-based Reward Policy Optimization) with rewards fine-tuning is available:
 
 ```bash
 python scripts/run_finetuning.py \
@@ -171,9 +137,9 @@ Test the fine-tuned model on a video:
 
 ```bash
 python scripts/demo.py \
-  --model_ckpt ./output/video_lora/checkcheckpoint-25 \
+  --model_ckpt ./output/video_lora/checkcheckpoint-25 \ # Find the right checkcheckpoint path after finetuning
   --base_model Qwen/Qwen2.5-VL-3B-Instruct \
-  --video_path ./data/synthetic_videos/videos/000.mp4 \
+  --video_path ./data/synthetic_videos/videos/000.mp4 \ # Find the right video path
   --prompt "In which direction is the ball moving?\nOptions:\n(A) Left to Right\n(B) Right to Left\n(C) Falling Down\n(D) Ascending" \
   --fps 1.0
 ```
@@ -193,4 +159,40 @@ conda activate qwen2.5VL-R1
 ```bash
 docker build -t qwen2.5vl-r1 .
 docker run -it --gpus all qwen2.5vl-r1 bash
+```
+
+
+---
+
+## 🗂️ Directory Structure
+
+```
+qwen2.5VL-R1/
+├── README.md
+├── Dockerfile
+├── environment.yaml
+├── requirements.txt
+├── video_generator.py
+├── .dockerignore
+├── data/
+│   └── synthetic_videos/
+│       ├── train.json
+│       ├── val.json
+│       └── videos/
+├── scripts/
+│   ├── demo.py
+│   ├── run_finetuning.py
+│   └── zero2_offload.json
+└── src/
+    └── training/
+        ├── __init__.py
+        ├── constants.py
+        ├── data.py
+        ├── modality_patch.py
+        ├── params.py
+        ├── rewards.py
+        ├── train.py
+        ├── train_grpo.py
+        ├── train_utils.py
+        └── trainer.py
 ```
