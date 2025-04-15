@@ -34,6 +34,7 @@ def train():
     parser = HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
 
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    
     use_liger = training_args.use_liger
     if "Qwen2.5" in model_args.model_id:
         replace_qwen2_5_with_mixed_modality_forward(use_liger=use_liger)

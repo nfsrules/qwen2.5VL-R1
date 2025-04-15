@@ -23,6 +23,9 @@ class TrainingArguments(TrainingArguments):
     adam_beta2: float = field(default=0.999)
     adam_epsilon: float = field(default=1e-8)
 
+    report_to: str = field(default="wandb")
+    run_name: str = field(default="qwen2.5-default")
+
     freeze_vision_tower: bool = field(default=False)
     freeze_llm: bool = field(default=False)
     tune_merger: bool = field(default=False)
