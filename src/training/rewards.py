@@ -48,6 +48,9 @@ def match_format_approximately(prompts=None, completions=None, **kwargs):
 def check_answer(prompts=None, completions=None, **kwargs):
     scores = []
 
+    print("prompts", prompts)
+    print("completions", completions)
+
     for i, (prompt, completion) in enumerate(zip(prompts, completions)):
         prompt_str = flatten_prompt(prompt)
         completion_str = flatten_prompt(completion)

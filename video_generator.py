@@ -10,6 +10,8 @@ import base64
 import time
 from openai import OpenAI
 from tqdm import tqdm
+from augly.video.transforms import Crop, GaussianBlur  # Updated to use AugLy
+import augly.video.functional as vf
 
 
 class SyntheticDatasetLoader:
@@ -19,8 +21,6 @@ class SyntheticDatasetLoader:
         The CoT reasoning process should start with a goal aknowledging expressions like: "The goal is", "So, the objective is". 
         Then, use problem solving expressions like: "Let me think this matter step by step", "let me think", "a way to solve it is", "oh, I see it", "mmm, interesting", "this is probably correct" or other natural language expressions.
 
-        Please strictly do not include \"Answer:\" in the question part to avoid confusion and leakage.
-
         Input Format:
             Original Question: {original_question}
             Original Answer: {original_answer}
@@ -29,10 +29,10 @@ class SyntheticDatasetLoader:
             <think>Your generated CoT reasoning process</think>
             <answer>easy to verify answer (same format than the Original Answer)</answer>
 
-        Important: **Do not include the Original Answer** in the thinking process, only in the final part. 
+        Important: **Do not include the Original Answer** in the thinking process, only in the final part to avoid leaking the answer.
     """
 
-    def __init__(self, output_dir="dataset", frame_size=64, video_length=30):
+    def __init__(self, output_dir="dataset", frame_size=64, video_length=30, augment="crop,blur", augment_prob=0.1):
         base_path = Path(__file__).parent.resolve()
         self.output_dir = (base_path / output_dir).resolve()
         self.video_dir = self.output_dir / "videos"
@@ -62,14 +62,15 @@ class SyntheticDatasetLoader:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.video_dir.mkdir(parents=True, exist_ok=True)
 
+        self.augment = [a.strip().lower() for a in augment.split(",") if a.strip()]
+        self.augment_prob = augment_prob
+
         print(f"Dataset will be saved to: {self.output_dir}")
 
     def generate_dataset(self, num_samples=10, cot=False, seed=42, split=None):
 
         if cot and not self.client:
-            print(
-                "OPENAI_API_KEY not found or OpenAI client unavailable. Falling back to non-CoT generation."
-            )
+            print("OPENAI_API_KEY not found or OpenAI client unavailable. Falling back to non-CoT generation.")
             cot = False
 
         print(f"Starting dataset generation ({num_samples} samples, CoT: {cot})...")
@@ -77,34 +78,30 @@ class SyntheticDatasetLoader:
         random.seed(seed)
         all_metadata = []
 
-        # Distribute samples evenly across classes
         samples_per_class = num_samples // len(self.classes)
         extra = num_samples % len(self.classes)
-        class_list = self.classes * samples_per_class + random.sample(
-            self.classes, extra
-        )
+        class_list = self.classes * samples_per_class + random.sample(self.classes, extra)
         random.shuffle(class_list)
 
-        for idx, motion_type in tqdm(
-            enumerate(class_list),
-            total=len(class_list),
-            desc="Generating samples",
-        ):
+        num_augmented_videos = int(len(class_list) * self.augment_prob)
+        augment_indices = set(random.sample(range(len(class_list)), num_augmented_videos))
+
+        for idx, motion_type in tqdm(enumerate(class_list), total=len(class_list), desc="Generating samples"):
             video_filename = f"{idx:03d}.mp4"
             video_path = self.video_dir / video_filename
+            apply_augmentation = idx in augment_indices
             self._generate_video(motion_type, video_path)
+
+            if apply_augmentation:
+                self._apply_augly_augmentation(video_path)
 
             question = "<video>\nIn which direction is the ball moving?\nOptions:\n(A) Left to Right\n(B) Right to Left\n(C) Falling Down\n(D) Ascending"
             answer = self.option_labels[motion_type]
 
             if cot:
                 composite_image = self._create_motion_composite(video_path)
-                cot_response = self._generate_cot_response(
-                    composite_image, question, answer
-                )
-                full_answer = (
-                    cot_response.strip() if cot_response else f"Answer: {answer}"
-                )
+                cot_response = self._generate_cot_response(composite_image, question, answer)
+                full_answer = cot_response.strip() if cot_response else f"Answer: {answer}"
             else:
                 full_answer = f"Answer: {answer}"
 
@@ -113,9 +110,7 @@ class SyntheticDatasetLoader:
                 {"from": "gpt", "value": full_answer},
             ]
 
-            all_metadata.append(
-                {"video": video_filename, "conversations": conversations}
-            )
+            all_metadata.append({"video": video_filename, "conversations": conversations})
 
         split_idx = int(len(all_metadata) * split)
         train_data = all_metadata[:split_idx]
@@ -138,7 +133,6 @@ class SyntheticDatasetLoader:
         white = (255, 255, 255)
         radius = 20
 
-        # Define initial position and velocity based on motion type
         if motion_type == "left_to_right":
             x, y = -radius, self.screen_height // 2
             dx, dy = 5, 0
@@ -164,46 +158,41 @@ class SyntheticDatasetLoader:
         imageio.mimsave(save_path, frames, fps=30)
         pygame.quit()
 
+    def _apply_augly_augmentation(self, video_path):
+        transforms = []
+        if "crop" in self.augment:
+            transforms.append(Crop(top=2, left=2, height=60, width=60))
+        if "blur" in self.augment:
+            transforms.append(GaussianBlur(radius=1.5))
+
+        vf.apply_transforms(video_path=str(video_path), output_path=str(video_path), transforms=transforms)
+
     def _create_motion_composite(self, video_path):
         reader = imageio.get_reader(video_path)
         num_frames = reader.count_frames()
         sample_indices = [int(i * (num_frames - 1) / 3) for i in range(4)]
 
-        frames = [
-            Image.fromarray(reader.get_data(i)).convert("RGBA") for i in sample_indices
-        ]
+        frames = [Image.fromarray(reader.get_data(i)).convert("RGBA") for i in sample_indices]
         base = frames[0].copy()
         for f in frames[1:]:
             base = Image.blend(base, f, alpha=0.5)
         return base.convert("RGB")
 
-    def _generate_cot_response(
-        self, image: Image.Image, question: str, answer: str, max_retries=5
-    ):
+    def _generate_cot_response(self, image: Image.Image, question: str, answer: str, max_retries=5):
         def image_to_base64(img: Image.Image):
             buffer = BytesIO()
             img.convert("RGB").save(buffer, format="JPEG")
-            return (
-                f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode()}"
-            )
+            return f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode()}"
 
-        prompt = self.PROMPT_FORMAT.format(
-            original_question=question, original_answer=answer
-        )
+        prompt = self.PROMPT_FORMAT.format(original_question=question, original_answer=answer)
         data_url = image_to_base64(image)
 
         messages = [
-            {
-                "role": "system",
-                "content": "You are an expert to analyze the image and provide a Chain of Thought CoT answer to the user.",
-            },
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": data_url}},
-                    {"type": "text", "text": prompt},
-                ],
-            },
+            {"role": "system", "content": "You are an expert to analyze the image and provide a Chain of Thought CoT answer to the user."},
+            {"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": data_url}},
+                {"type": "text", "text": prompt},
+            ]},
         ]
 
         for attempt in range(max_retries):
@@ -216,7 +205,7 @@ class SyntheticDatasetLoader:
                 )
                 return response.choices[0].message.content
             except Exception as e:
-                print(f"⚠️ Retry {attempt+1}/{max_retries}: {e}")
+                print(f"\u26a0\ufe0f Retry {attempt+1}/{max_retries}: {e}")
                 time.sleep(2**attempt + random.uniform(0, 1))
 
         print("GPT failed after retries.")
@@ -226,50 +215,16 @@ class SyntheticDatasetLoader:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Generate synthetic video dataset for Qwen2.5-VL fine-tuning."
-    )
-    parser.add_argument(
-        "--output_dir",
-        type=str,
-        default="qwen-vl-finetune/qwenvl/data/synthetic_datasets/my_ball_dataset",
-        help="Where to save videos and metadata.",
-    )
-    parser.add_argument(
-        "--num_samples",
-        type=int,
-        default=20,
-        help="How many video samples to generate.",
-    )
-    parser.add_argument(
-        "--cot",
-        action="store_true",
-        help="Whether to use Chain-of-Thought (CoT) reasoning.",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Random seed for reproducibility.",
-    )
-    parser.add_argument(
-        "--split",
-        type=float,
-        default=0.8,
-        help="Train/val split ratio (default: 0.8 for 80% train).",
-    )
-    parser.add_argument(
-        "--frame_size",
-        type=int,
-        default=64,
-        help="Width/height of video frames.",
-    )
-    parser.add_argument(
-        "--video_length",
-        type=int,
-        default=30,
-        help="Number of frames per video.",
-    )
+    parser = argparse.ArgumentParser(description="Generate synthetic video dataset for Qwen2.5-VL fine-tuning.")
+    parser.add_argument("--output_dir", type=str, default="qwen-vl-finetune/qwenvl/data/synthetic_datasets/my_ball_dataset", help="Where to save videos and metadata.")
+    parser.add_argument("--num_samples", type=int, default=20, help="How many video samples to generate.")
+    parser.add_argument("--cot", action="store_true", help="Whether to use Chain-of-Thought (CoT) reasoning.")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility.")
+    parser.add_argument("--split", type=float, default=0.8, help="Train/val split ratio (default: 0.8 for 80% train).")
+    parser.add_argument("--frame_size", type=int, default=64, help="Width/height of video frames.")
+    parser.add_argument("--video_length", type=int, default=30, help="Number of frames per video.")
+    parser.add_argument("--augment", type=str, default="crop,blur", help="Comma-separated augmentations to apply. Options: crop, blur")
+    parser.add_argument("--augment_prob", type=float, default=0.1, help="Fraction of videos to augment (0.0 to 1.0). Default: 0.1")
 
     args = parser.parse_args()
 
@@ -277,6 +232,8 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         frame_size=args.frame_size,
         video_length=args.video_length,
+        augment=args.augment,
+        augment_prob=args.augment_prob,
     )
 
     loader.generate_dataset(
