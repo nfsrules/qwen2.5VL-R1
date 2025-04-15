@@ -102,9 +102,10 @@ python scripts/run_finetuning.py \
   --lora_dropout 0.05
 ```
 
-### GRPO Post-training (For reasoning models)
+### RL GRPO Post-training (For reasoning version)
 
-For advanced users, GRPO (Gradient-based Reward Policy Optimization) with rewards fine-tuning is available:
+We also provide a GRPO (Group Relative Policy Optimization) training script with rewards for training reasoning models:
+
 
 ```bash
 python scripts/run_finetuning.py \
