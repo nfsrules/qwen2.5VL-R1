@@ -466,7 +466,11 @@ class RandAugment:
         self.choice_weights = choice_weights
 
     def __call__(self, img):
-        # no replacement when using weighted choice
+        if isinstance(img, list):
+            return [self._apply_ops(frame) for frame in img]
+        return self._apply_ops(img)
+
+    def _apply_ops(self, img):
         ops = np.random.choice(
             self.ops,
             self.num_layers,
@@ -474,31 +478,19 @@ class RandAugment:
             p=self.choice_weights,
         )
         for op in ops:
+            print(f"Applied: {op.aug_fn.__name__}")
             img = op(img)
         return img
 
-
-def rand_augment_transform(config_str, hparams):
+def rand_augment_transform(config_str="rand-m9-n2", hparams=None, custom_ops=None):
     """
-    RandAugment: Practical automated data augmentation... - https://arxiv.org/abs/1909.13719
-
-    Create a RandAugment transform
-    :param config_str: String defining configuration of random augmentation. Consists of multiple sections separated by
-    dashes ('-'). The first section defines the specific variant of rand augment (currently only 'rand'). The remaining
-    sections, not order sepecific determine
-        'm' - integer magnitude of rand augment
-        'n' - integer num layers (number of transform ops selected per image)
-        'w' - integer probabiliy weight index (index of a set of weights to influence choice of op)
-        'mstd' -  float std deviation of magnitude noise applied
-        'inc' - integer (bool), use augmentations that increase in severity with magnitude (default: 0)
-    Ex 'rand-m9-n3-mstd0.5' results in RandAugment with magnitude 9, num_layers 3, magnitude_std 0.5
-    'rand-mstd1-w0' results in magnitude_std 1.0, weights 0, default magnitude of 10 and num_layers 2
-    :param hparams: Other hparams (kwargs) for the RandAugmentation scheme
-    :return: A PyTorch compatible Transform
+    Create a RandAugment transform.
+    Supports optional custom list of AugmentOp objects for safe transformations.
     """
-    magnitude = _MAX_LEVEL  # default to _MAX_LEVEL for magnitude (currently 10)
-    num_layers = 2  # default to 2 ops per image
-    weight_idx = None  # default to no probability weights for op choice
+    hparams = hparams or {}
+    magnitude = _MAX_LEVEL  # default to 10
+    num_layers = 2  # default layers
+    weight_idx = None  # no weights by default
     transforms = _RAND_TRANSFORMS
     config = config_str.split("-")
     assert config[0] == "rand"
@@ -509,10 +501,9 @@ def rand_augment_transform(config_str, hparams):
             continue
         key, val = cs[:2]
         if key == "mstd":
-            # noise param injected via hparams for now
             hparams.setdefault("magnitude_std", float(val))
         elif key == "inc":
-            if bool(val):
+            if bool(int(val)):
                 transforms = _RAND_INCREASING_TRANSFORMS
         elif key == "m":
             magnitude = int(val)
@@ -521,11 +512,15 @@ def rand_augment_transform(config_str, hparams):
         elif key == "w":
             weight_idx = int(val)
         else:
-            assert NotImplementedError
-    ra_ops = rand_augment_ops(
-        magnitude=magnitude, hparams=hparams, transforms=transforms
-    )
-    choice_weights = (
-        None if weight_idx is None else _select_rand_weights(weight_idx)
-    )
+            raise NotImplementedError(f"Unknown config key: {key}")
+
+    if custom_ops:
+        ra_ops = custom_ops
+        choice_weights = None
+    else:
+        ra_ops = rand_augment_ops(magnitude=magnitude, hparams=hparams, transforms=transforms)
+        choice_weights = (
+            None if weight_idx is None else _select_rand_weights(weight_idx, transforms)
+        )
+
     return RandAugment(ra_ops, num_layers, choice_weights=choice_weights)

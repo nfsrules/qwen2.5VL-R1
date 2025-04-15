@@ -12,7 +12,11 @@ from openai import OpenAI
 from tqdm import tqdm
 import numpy as np
 
-from src.training.augmentations import rand_augment_transform 
+from src.training.augmentations import (
+    rand_augment_transform,
+    AutoContrast, Equalize, Color, Brightness,
+    Sharpness, Contrast, Posterize, Solarize, Invert
+)
 
 class SyntheticDatasetLoader:
     PROMPT_FORMAT = """
@@ -63,8 +67,18 @@ class SyntheticDatasetLoader:
         self.video_dir.mkdir(parents=True, exist_ok=True)
 
         self.augment_prob = augment_prob
-        self.randaugment = rand_augment_transform("rand-m9-n2", hparams={"translate_const": 10})
-
+        safe_ops = [
+            AutoContrast(),
+            Equalize(),
+            Color(),
+            Brightness(),
+            Sharpness(),
+            Contrast(),
+            Posterize(),
+            Solarize(),
+            Invert(),
+        ]
+        self.randaugment = rand_augment_transform(custom_ops=safe_ops)
         print(f"Dataset will be saved to: {self.output_dir}")
 
     def generate_dataset(self, num_samples=10, cot=False, seed=42, split=None):
