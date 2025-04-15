@@ -525,8 +525,20 @@ def rand_augment_transform(config_str="rand-m9-n2", hparams=None, custom_ops=Non
 
     return RandAugment(ra_ops, num_layers, choice_weights=choice_weights)
 
-__all__ = [
-    "auto_contrast", "equalize", "invert", "solarize", "solarize_add", "posterize",
-    "contrast", "color", "brightness", "sharpness",
-    "AugmentOp", "rand_augment_transform"
-]
+def safe_augment_ops(magnitude=10, hparams=None):
+    """
+    Returns a list of visually safe (non-geometric) AugmentOps.
+    These won't alter object position/direction, only appearance.
+    """
+    safe_names = [
+        "AutoContrast",
+        "Equalize",
+        "Color",
+        "Brightness",
+        "Sharpness",
+        "Contrast",
+        "Posterize",
+        "Solarize",
+        "Invert",
+    ]
+    return [AugmentOp(name, magnitude=magnitude, hparams=hparams) for name in safe_names]
