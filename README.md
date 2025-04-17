@@ -54,7 +54,7 @@ pip install -r requirements.txt
 Generate synthetic videos of a moving ball with corresponding labels and optional support for:
 
 -  Video ugmentations (blur and crop) with default probability of 0.2
--  CoT (Chain-of-Thought) thinking generation for reasoning models (Optional, the code will work in simple mode)
+-  CoT (Chain-of-Thought) thinking generation for reasoning models (Optional, the code will work in simple mode removing the --cot flag)
 
 
 ```bash
