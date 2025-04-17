@@ -56,16 +56,16 @@ Generate synthetic videos of a moving ball with corresponding labels and optiona
 -  Video ugmentations (blur and crop) with default probability of 0.2
 -  CoT (Chain-of-Thought) thinking generation for reasoning models (Optional, the code will work in simple mode removing the --cot flag)
 
-
 ```bash
-
 # Optional: Enable Chain-of-Thought generation
 export OPENAI_API_KEY=your-openai-api-key
+```
 
+```bash
 python video_generator.py \
   --output_dir ./data/synthetic_videos \
   --num_samples 20 \
-  --cot \
+  --cot \  # or remove for no CoT generation
   --frame_size 64 \
   --video_length 30 \
   --split 0.8 \
