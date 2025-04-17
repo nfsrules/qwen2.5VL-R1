@@ -1,4 +1,4 @@
-# Qwen2.5VL-R1: Video Classification Fine-Tuning
+# Qwen2.5VL-R1: Video Action Recognition with Reinforcement Learning
 
 🚀 **Qwen2.5VL-R1** is a project for fine-tuning Qwen2.5-VL on a synthetic video classification task, optimized for a single-GPU setup. It includes a complete pipeline for generating synthetic video data, applying augmentations, fine-tuning with LoRA, and running inference.
 
