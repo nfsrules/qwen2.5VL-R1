@@ -57,7 +57,7 @@ Generate synthetic videos of a moving ball with corresponding labels and optiona
 -  CoT (Chain-of-Thought) thinking generation for reasoning models (Optional, the code will work in simple mode removing the --cot flag)
 
 ```bash
-# Optional: Enable Chain-of-Thought generation
+# Optional: Enable Chain-of-Thought generation by adding your OpenAI key
 export OPENAI_API_KEY=your-openai-api-key
 ```
 
