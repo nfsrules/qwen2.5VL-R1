@@ -191,22 +191,6 @@ python scripts/demo.py \
 - Output: Prints the model’s prediction, including reasoning steps (if trained with CoT) and the final answer.
 
 
-### Credits
-
-- Base model documentation: [Transformers - Qwen2.5-VL](https://github.com/huggingface/transformers/blob/main/docs/source/en/model_doc/qwen2_5_vl.md)  
-  > 📌 Caveat: Supports **video inference**, but **not video training**.
-
-- Fine-tuning code adapted from:  
-  - [2U1/Qwen2-VL-Finetune](https://github.com/2U1/Qwen2-VL-Finetune)  
-  - [QwenLM/Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL) *(includes only for full FT, not PEFT)*
-
-- GRPO approach inspired by:  
-  - [Gemma3 (1B) - GRPO Notebook](https://colab.research.google.com/github/unslothai/notebooks/blob/main/nb/Gemma3_(1B)-GRPO.ipynb)  
-  - [lll6gg/UI-R1](https://github.com/lll6gg/UI-R1/tree/main) 
-  > 📌 Caveat: Do not support **videos**
-
----
-
 ### Citation
 
 If you use **Qwen2.5VL‑R1** in your research, please cite it!
@@ -220,6 +204,21 @@ If you use **Qwen2.5VL‑R1** in your research, please cite it!
   note         = {Version 0.1.0}
 }
 
+---
+
+### Credits
+
+- Base model documentation: [Transformers - Qwen2.5-VL](https://github.com/huggingface/transformers/blob/main/docs/source/en/model_doc/qwen2_5_vl.md)  
+  > 📌 Caveat: Supports **video inference**, but **not video training**.
+
+- Fine-tuning code adapted from:  
+  - [2U1/Qwen2-VL-Finetune](https://github.com/2U1/Qwen2-VL-Finetune)  
+  - [QwenLM/Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL) *(includes only for full FT, not PEFT)*
+
+- GRPO approach inspired by:  
+  - [Gemma3 (1B) - GRPO Notebook](https://colab.research.google.com/github/unslothai/notebooks/blob/main/nb/Gemma3_(1B)-GRPO.ipynb)  
+  - [lll6gg/UI-R1](https://github.com/lll6gg/UI-R1/tree/main) 
+  > 📌 Caveat: Do not support **videos**
 
 ---
 
