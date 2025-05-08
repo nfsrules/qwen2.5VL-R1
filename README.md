@@ -200,7 +200,7 @@ If you use **Qwen2.5VL‑R1** in your research, please cite it!
   title        = {Qwen2.5VL‐R1: Video Action Recognition with Reinforcement Learning},
   author       = {Nelson Fernandez},
   year         = {2025},
-  howpublished = {\url{https://github.com/yourname/qwen2.5VL-R1}},
+  howpublished = {\url{https://github.com/nfsrules/qwen2.5VL-R1}},
   note         = {Version 0.1.0}
 }
 ```
