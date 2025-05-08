@@ -190,6 +190,7 @@ python scripts/demo.py \
 
 - Output: Prints the model’s prediction, including reasoning steps (if trained with CoT) and the final answer.
 
+---
 
 ### Citation
 
