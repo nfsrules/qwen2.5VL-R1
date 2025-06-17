@@ -15,7 +15,7 @@ This project demonstrates fine-tuning a multimodal large language model (MLLM), 
 
 
 ## Support
-Do you find this project helpful? Support our work with a star!
+Do you find this project helpful? Support our work with a star! ⭐⭐⭐⭐
 
 ---
 
