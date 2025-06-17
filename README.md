@@ -13,6 +13,10 @@ This project demonstrates fine-tuning a multimodal large language model (MLLM), 
 - Falling Down  
 - Ascending
 
+
+## Support
+Do you find this project helpful? Support our work with a star!
+
 ---
 
 ## 🔧 Setup
