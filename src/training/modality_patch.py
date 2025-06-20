@@ -70,8 +70,8 @@ def qwen2_5_mixed_modality_forward_with_flce(
             # Operates as maksed_scatter for the image tokens
             # However the values are all zeros so it dosen't affect the embeddings.
             # This could avoid deepspeed error when some batch only has texts.
-            # inputs_embeds += image_embeds.mean() * 0
-            inputs_embeds = inputs_embeds + image_embeds.mean() * 0
+            inputs_embeds += image_embeds.mean() * 0
+            #inputs_embeds = inputs_embeds + image_embeds.mean() * 0
 
         if pixel_values is not None:
             pixel_values = pixel_values.type(self.visual.dtype)
