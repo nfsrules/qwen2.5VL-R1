@@ -1,4 +1,4 @@
-# Qwen2.5VL-R1: Video Action Recognition with Reinforcement Learning
+# QWEN 2.5VL-R1: multimodal Reasoning model for action recognition in videos
 
 🚀 **Qwen2.5VL-R1** is a project for fine-tuning Qwen2.5-VL on a synthetic video classification task, optimized for a single-GPU setup. It includes a complete pipeline for generating synthetic video data, applying augmentations, fine-tuning with LoRA, GRPO and running inference.
 
@@ -6,7 +6,7 @@
 
 ## 🧠 Objective
 
-This project demonstrates fine-tuning a multimodal large language model (MLLM), specifically `Qwen2.5-VL-3B-Instruct`, for a simple video classification task (similar to Kinetics-400). The task involves classifying the direction of a moving ball in synthetic videos into one of four classes:
+This project demonstrates fine-tuning a multimodal large language model (MLLM), specifically `Qwen2.5-VL-3B-Instruct`, for a video classification task (similar to Kinetics-400). The task involves classifying the direction of a moving ball in synthetic videos into one of four classes:
 
 - Left to Right  
 - Right to Left  
